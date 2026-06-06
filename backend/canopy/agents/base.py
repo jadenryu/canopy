@@ -1,16 +1,19 @@
 """Agent base — the bidding economics shared by every market participant.
 
-bid(): estimate cost (model-tier price), apply the strategy's margin,
+Cost model: a solo agent must grind every hop itself, so est_cost =
+model_cost * hops. A manager prices on cheap subcontract labor instead
+(hops * cheap_cost * discount) — that spread is its business model.
+
+bid(): estimate cost, apply the strategy's margin (strategies may decline),
 clamp to [reserve_price, bounty_cap], divide by rep_weight(reputation)
 → effective bid. Each bid is a @weave.op so it shows up as a turn in
-the job's thread. Execution lives in worker.py; subcontracting arrives
-in Phase 3.
+the job's thread. Execution lives in worker.py.
 """
 import random
 
 import weave
 
-from canopy.agents.strategies import Generalist, Strategy
+from canopy.agents.strategies import Generalist, Manager, Strategy
 from canopy.config import settings
 from canopy.jobs.schema import Bid, Job, JobResult
 from canopy.market import registry
@@ -31,19 +34,31 @@ class Agent:
         self.model_tier = model_tier
 
     @property
-    def est_cost(self) -> float:
-        return (
+    def is_manager(self) -> bool:
+        return isinstance(self.strategy, Manager)
+
+    def est_cost(self, job: Job) -> float:
+        if self.is_manager:
+            # decompose + hire cheap labor per hop, skim the spread
+            return job.hops * settings.model_cost_cheap * settings.manager_hop_discount
+        per_hop = (
             settings.model_cost_premium
             if self.model_tier == "premium"
             else settings.model_cost_cheap
         )
+        return job.hops * per_hop
 
     @weave.op
     async def bid(self, job: Job) -> Bid | None:
-        """Price the job; returns None if the agent can't compete under the cap."""
-        if self.est_cost > job.bounty_cap:
+        """Price the job; None = decline (out of niche, or can't compete)."""
+        est = self.est_cost(job)
+        if est > job.bounty_cap:
             return None  # can't even cover cost — sit this one out
-        price = self.strategy.price(job, self.est_cost, await last_clearing_price(job.category))
+        price = self.strategy.price(
+            job, est, await last_clearing_price(job.category, job.hops)
+        )
+        if price is None:
+            return None
         price = min(max(price, settings.reserve_price), job.bounty_cap)
         reputation = await registry.get_reputation(self.id)
         return Bid(

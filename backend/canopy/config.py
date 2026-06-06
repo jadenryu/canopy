@@ -41,15 +41,23 @@ class Settings(BaseSettings):
     rng_seed: int = 42
 
     # --- auction / bidding ---
-    rep_weight_alpha: float = 1.0  # effective_bid = price / (1 + alpha*(rep-0.5))
+    rep_weight_alpha: float = 0.5  # exponent in rep_weight = (rep/0.5)^alpha
     reputation_beta: float = 0.3  # EMA weight of the newest score
     margin_min: float = 0.10
     margin_max: float = 0.60
     reserve_price: float = 0.5  # minimum bid — prevents race-to-zero
-    model_cost_cheap: float = 1.0  # nominal per-job cost units by model tier
+    model_cost_cheap: float = 1.0  # nominal per-HOP cost units by model tier
     model_cost_premium: float = 3.0
     default_bounty_cap: float = 10.0
     human_balance: float = 10_000.0  # the human client's wallet
+
+    # --- matching / subcontracting / lifecycle (Phase 3) ---
+    match_top_k: int = 4  # RedisVL shortlist size per job
+    subcontract_bounty_frac: float = 0.4  # sub-job bounty cap as fraction of parent cap
+    manager_hop_discount: float = 0.7  # manager's est cost = hops * cheap_cost * this
+    manager_min_hops: int = 3  # managers only bid on jobs this complex
+    failure_penalty: float = 10.0  # balance slash on rejection / failed settle
+    saboteur_balance: float = 25.0  # demo saboteur starts poor → fast bankruptcy
 
     # --- worker cost control ---
     worker_max_tokens: int = 600

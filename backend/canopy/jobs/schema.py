@@ -21,6 +21,7 @@ class Job(BaseModel):
     spec: str  # the question text
     requirements: list[str] = Field(default_factory=list)
     category: str = "general"
+    hops: int = 2  # complexity = number of reasoning hops; >=3 attracts managers
     bounty_cap: float = 10.0
     deadline_ts: float | None = None
     status: JobStatus = JobStatus.OPEN

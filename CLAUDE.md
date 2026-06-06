@@ -3,9 +3,12 @@
 - Read documentation/spec.md first ("Clearing" in the spec = this project, renamed Canopy).
 - Build ONE phase at a time; stop for review after each phase's ✅ Done-when gate.
 - API versions were verified 2026-06-06 (Step 0) and pinned:
-  weave 0.52.42, openai 2.41.0, redis 8.0.0, redisvl 0.3.9, fastapi 0.136.3,
+  weave 0.52.42, openai 2.41.0, redis 7.4.1, redisvl 0.20.0, fastapi 0.136.3,
   ag-ui-protocol 0.1.19. Models: gpt-5.4-nano (workers), gpt-5.4-mini
   (premium/scorer), text-embedding-3-small @ 256 dims.
+  (Phase 3 correction: redis-py 8.0.0 + redisvl 0.3.9 were mutually
+  incompatible — ALL redisvl releases require redis<8. Downgraded redis-py
+  to 7.4.1, bumped redisvl to 0.20.0; our command usage is unaffected.)
 - Job domain: MULTI-HOP BENCHMARK QUESTIONS (ground-truth answers → objective
   scoring; multi-hop structure → natural subcontract decomposition).
 - NOTE: spec's "Weave Signals" feature does NOT exist (re-checked in weave 0.52.42
