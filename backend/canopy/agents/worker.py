@@ -31,6 +31,7 @@ class Worker(Agent):
         model_tier: str = "cheap",
         rng: random.Random | None = None,
         mock: bool = False,
+        sabotage: bool = False,
     ):
         super().__init__(agent_id, strategy=strategy, model_tier=model_tier, rng=rng)
         self.model = (
@@ -39,10 +40,13 @@ class Worker(Agent):
             else settings.worker_model_cheap
         )
         self.mock = mock
+        self.sabotage = sabotage  # deliberately sloppy output → guardrail bait
 
     @weave.op
     async def execute_job(self, job: Job) -> JobResult:
-        if self.mock:
+        if self.sabotage:
+            output = "idk, prob 42 or smth lol"  # no FINAL ANSWER line → rejected
+        elif self.mock:
             output = f"[mock execution by {self.id}]\nFINAL ANSWER: (mock)"
         else:
             output = await self.llm_call(job.spec)

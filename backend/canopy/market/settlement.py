@@ -5,8 +5,9 @@ score <  SCORE_THRESHOLD → escrow refunded to the client, reputation down.
 Either way the clearing price history (`prices:{category}` ZSET) and the
 leaderboard move, and reputation updates via the EMA.
 
-Phase 1 passes a placeholder score; Phase 2 wires the Weave referee
-Scorer's output in here so payment + reputation derive from Weave scores.
+The score comes from the Weave referee Scorer (JobQualityScorer) — payment
++ reputation derive from Weave scores. reject() is the guardrail path:
+work that fails the submission bar is refunded BEFORE any payment.
 """
 import time
 
@@ -48,6 +49,28 @@ async def settle(job: Job, result: JobResult, score: float) -> Job:
             "agent_id": job.winner_id,
             "score": score,
             "amount": amount if paid else 0.0,
+            "reputation": round(reputation, 4),
+        },
+    )
+    return job
+
+
+@weave.op
+async def reject(job: Job, result: JobResult, checks: dict) -> Job:
+    """Guardrail fail at the submission boundary: refund BEFORE payment,
+    reputation penalty, status=rejected. No escrow ever reaches the worker."""
+    r = get_redis()
+    await escrow.refund(job.id, job.client_id)
+    job.status = JobStatus.REJECTED
+    await order_book.save_job(job)
+    await r.hincrby(f"agent:{job.winner_id}", "jobs_failed", 1)
+    reputation = await update_reputation(job.winner_id, 0.0)
+    await events.emit(
+        "rejected",
+        {
+            "job_id": job.id,
+            "agent_id": job.winner_id,
+            "checks": checks,
             "reputation": round(reputation, 4),
         },
     )

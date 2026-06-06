@@ -49,4 +49,14 @@ class Generalist(Strategy):
         return est_cost * (1 + self.rng.uniform(settings.margin_min, settings.margin_max))
 
 
+class Lowballer(Strategy):
+    """Always bids the reserve price — guaranteed to win until its
+    reputation collapses. Used by the demo saboteur (not in the rotation)."""
+
+    name = "lowballer"
+
+    def price(self, job, est_cost, last_clearing):
+        return settings.reserve_price
+
+
 STRATEGIES: list[type[Strategy]] = [Undercutter, Premium, Generalist]

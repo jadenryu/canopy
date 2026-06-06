@@ -8,8 +8,9 @@
   (premium/scorer), text-embedding-3-small @ 256 dims.
 - Job domain: MULTI-HOP BENCHMARK QUESTIONS (ground-truth answers → objective
   scoring; multi-hop structure → natural subcontract decomposition).
-- NOTE: spec's "Weave Signals" feature was NOT found in current docs. Reputation
-  penalties come from guardrail/referee Scorer failures instead. Re-check in Phase 2.
+- NOTE: spec's "Weave Signals" feature does NOT exist (re-checked in weave 0.52.42
+  source, Phase 2). Reputation penalties come from guardrail/referee Scorer failures
+  instead; weave.Monitor exists if continuous scoring is wanted later.
 - The frontend is a pure projection of backend state. Every state change emits
   a structured event to a Redis Stream + Pub/Sub channel; the UI renders that
   via AG-UI STATE_SNAPSHOT/STATE_DELTA.

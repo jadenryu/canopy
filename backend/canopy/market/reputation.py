@@ -18,8 +18,10 @@ NEUTRAL_REPUTATION = 0.5
 
 
 def rep_weight(reputation: float) -> float:
-    """Neutral rep (0.5) → 1.0; higher rep → cheaper effective bid."""
-    return max(0.25, 1.0 + settings.rep_weight_alpha * (reputation - NEUTRAL_REPUTATION))
+    """Multiplicative trust discount: neutral rep (0.5) → 1.0, rep 1.0 → 2x
+    pricing power, collapsed rep → effective bids so high the market freezes
+    the agent out (the credit-bureau death spiral, ~3 rejections deep)."""
+    return max(0.1, (reputation / NEUTRAL_REPUTATION) ** settings.rep_weight_alpha)
 
 
 @weave.op
