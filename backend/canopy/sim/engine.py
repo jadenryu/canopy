@@ -115,54 +115,62 @@ class Market:
                 self.job_log.append((job, None))
                 return job, None
 
-            job = await auction.award(job, winning_bid)
-            await self._publish_job_detail(job, placed, winning_bid)
+            return await self.finish_job(job, winning_bid, placed)
 
-            job.status = JobStatus.EXECUTING
-            await order_book.save_job(job)
-            await events.emit("executing", {"job_id": job.id, "agent_id": job.winner_id})
-            winner = self.workers[job.winner_id]
-            # busy → surge pricing on concurrent bids (capacity economics)
-            winner.busy = True
-            try:
-                # .call() keeps the Call object so Scorer verdicts attach to the trace
-                result, exec_call = await winner.execute_job.call(winner, job)
-            finally:
-                winner.busy = False
+    async def finish_job(
+        self, job: Job, winning_bid, all_bids: list | None = None
+    ) -> tuple[Job, JobResult | None]:
+        """Award → escrow → execute → guardrail → referee → settle/reject.
+        Shared by the auction path AND the eval baselines (which pick the
+        winner by a different rule but must pay identical lifecycle costs)."""
+        job = await auction.award(job, winning_bid)
+        await self._publish_job_detail(job, all_bids or [winning_bid], winning_bid)
 
-            # solo workers burn model cost per hop; a manager's costs are the
-            # real escrow payments to its subcontractors (already debited)
-            if not winner.is_manager:
-                cost = winner.est_cost(job)
-                await ledger.debit(winner.id, cost)
-                await ledger.record(winner.id, "openai", cost, job.id, "execution_cost")
+        job.status = JobStatus.EXECUTING
+        await order_book.save_job(job)
+        await events.emit("executing", {"job_id": job.id, "agent_id": job.winner_id})
+        winner = self.workers[job.winner_id]
+        # busy → surge pricing on concurrent bids (capacity economics)
+        winner.busy = True
+        try:
+            # .call() keeps the Call object so Scorer verdicts attach to the trace
+            result, exec_call = await winner.execute_job.call(winner, job)
+        finally:
+            winner.busy = False
 
-            job.status = JobStatus.VERIFYING
-            await order_book.save_job(job)
+        # solo workers burn model cost per hop; a manager's costs are the
+        # real escrow payments to its subcontractors (already debited)
+        if not winner.is_manager:
+            cost = winner.est_cost(job)
+            await ledger.debit(winner.id, cost)
+            await ledger.record(winner.id, "openai", cost, job.id, "execution_cost")
 
-            # 1) guardrail at the submission boundary — runs BEFORE any payment
-            guard = await exec_call.apply_scorer(GUARDRAIL)
-            if not guard.result["passed"]:
-                result.score, result.rationale = 0.0, "rejected by guardrail pre-payment"
-                job = await settlement.reject(job, result, guard.result["checks"])
-                self.job_log.append((job, result))
-                return job, result
+        job.status = JobStatus.VERIFYING
+        await order_book.save_job(job)
 
-            # 2) referee — its score IS the payment + reputation signal
-            if self.mock:
-                score, rationale = MOCK_SCORE, "mock run — referee skipped"
-            else:
-                verdict = await exec_call.apply_scorer(REFEREE)
-                score, rationale = verdict.result["score"], verdict.result["rationale"]
-            result.score, result.rationale = score, rationale
-            await events.emit(
-                "scored",
-                {"job_id": job.id, "agent_id": job.winner_id, "score": score, "rationale": rationale},
-            )
-            job = await settlement.settle(job, result, score)
-            await self._maybe_fork(winner)
+        # 1) guardrail at the submission boundary — runs BEFORE any payment
+        guard = await exec_call.apply_scorer(GUARDRAIL)
+        if not guard.result["passed"]:
+            result.score, result.rationale = 0.0, "rejected by guardrail pre-payment"
+            job = await settlement.reject(job, result, guard.result["checks"])
             self.job_log.append((job, result))
             return job, result
+
+        # 2) referee — its score IS the payment + reputation signal
+        if self.mock:
+            score, rationale = MOCK_SCORE, "mock run — referee skipped"
+        else:
+            verdict = await exec_call.apply_scorer(REFEREE)
+            score, rationale = verdict.result["score"], verdict.result["rationale"]
+        result.score, result.rationale = score, rationale
+        await events.emit(
+            "scored",
+            {"job_id": job.id, "agent_id": job.winner_id, "score": score, "rationale": rationale},
+        )
+        job = await settlement.settle(job, result, score)
+        await self._maybe_fork(winner)
+        self.job_log.append((job, result))
+        return job, result
 
     async def _publish_job_detail(self, job: Job, bids, winning_bid) -> None:
         """Declarative gen-UI source: a structured bid-comparison spec the

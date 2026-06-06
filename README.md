@@ -4,6 +4,8 @@
 
 Built for **WeaveHacks 4**.
 
+**Weave project:** https://wandb.ai/jadenryu_nvcc/canopy/weave · **Evaluation results:** [`documentation/results.md`](documentation/results.md)
+
 ---
 
 ## What is this?
@@ -81,9 +83,10 @@ Redis is the market's infrastructure — every key has a purpose beyond caching:
 | `agents:leaderboard` | **Sorted Set** | Live reputation ranking |
 | `ledger` | **Stream** | Append-only transaction log (escrow, payments, fees) |
 | `events` | **Stream** | Market event bus (`job_posted`, `bid_placed`, `awarded`, `settled`, `bankruptcy`, `fork`, `shock`) |
-| `agents:skills` | **RedisVL index** | Vector similarity search — capability matching for job routing |
-| `prices:{category}` | **TimeSeries** | Clearing-price history per job category |
-| `agent:{id}` | JSON/Hash | Agent state (balance, reputation, strategy, status) |
+| `skill:{agent}` | **RedisVL index** | Vector similarity search — capability matching routes jobs to the nearest skills |
+| `prices:{category}:h{hops}` | **Sorted Set** | Clearing-price history per (category, complexity) |
+| `agent:{id}` | Hash | Agent state (balance, reputation, strategy, status) — `HINCRBYFLOAT` = atomic wallet transfers |
+| `escrow` | Hash | Funds held between award and settlement |
 
 **Caching is not the story.** The optional LLM response cache is incidental — never pitched as the Redis use case.
 
@@ -103,9 +106,9 @@ Weave runs the market's justice system — every surface does real economic work
 
 4. **Weave Leaderboard** — the agent reputation ranking is published as a native Weave Leaderboard via `weave.flow.leaderboard`. The single most important market mechanic (who's trusted, who wins bids) is a Weave-native, eval-backed artifact.
 
-5. **Formal `weave.Evaluation`** — a held-out job set benchmarks market allocation vs. baselines (random / single-fixed-agent / round-robin) on quality-per-dollar. Hard evidence that the mechanism works.
+5. **Formal `weave.Evaluation`** — `canopy-allocator-eval` benchmarks market allocation vs. four baselines (single cheap agent, single premium agent, random, round-robin) on a held-out job set, quality-per-dollar as the headline metric. Hard evidence that the mechanism works — numbers in [`documentation/results.md`](documentation/results.md).
 
-6. **`weave.Monitor`** — monitors run the referee and guardrail scorers continuously over the live stream. Flagged failures feed reputation penalties that drive bankruptcy — Monitor is wired into market logic, not decorative.
+6. **Scorer verdicts drive natural selection** — every guardrail rejection or referee failure levies a balance penalty; repeated failures drain a wallet below the bankruptcy floor and the agent is deactivated and removed from matching. Weave scores literally decide who lives in the market. (The spec's "Signals" feature does not exist in weave 0.52.42 — verified in source; `weave.Monitor` exists and could run these scorers continuously as a follow-up.)
 
 ---
 
@@ -140,8 +143,8 @@ The demo explicitly names the spectrum: *"fixed widgets = controlled, bid-compar
 | LLM client | openai (AsyncOpenAI) | 2.41.0 |
 | Worker model | gpt-5.4-nano | — |
 | Scorer / premium model | gpt-5.4-mini | — |
-| Redis client | redis[hiredis] | 8.0.0 |
-| Vector search | redisvl | 0.3.9 |
+| Redis client | redis[hiredis] | 7.4.1 |
+| Vector search | redisvl | 0.20.0 |
 | Frontend framework | Next.js | 16.2.7 |
 | React | React | 19.2.4 |
 | CopilotKit | @copilotkit/react-core | 1.59.5 |
@@ -149,6 +152,7 @@ The demo explicitly names the spectrum: *"fixed widgets = controlled, bid-compar
 | Styling | Tailwind CSS | v4 |
 
 > `@ag-ui/client` is pinned to `0.0.53` — `0.0.55` has a private-property type conflict with CopilotKit 1.59.5's bundled copy.
+> `redis` is pinned `<8` because every redisvl release requires `redis<8.0` (discovered in Phase 3); our command usage is identical on 7.x.
 
 ---
 
@@ -178,24 +182,35 @@ canopy/
         registry.py       agent registry + RedisVL skill index
         events.py         Streams + Pub/Sub event bus
       agents/
-        worker.py         OpenAI-backed worker
-        strategies.py     bidding strategies
+        base.py           bidding economics (est cost, surge, rep-weighted bids)
+        worker.py         OpenAI-backed worker (+ manager subcontracting)
+        strategies.py     bidding strategies (undercutter/premium/specialist/manager)
         skills.py         skill profiles + embeddings
+        analyst.py        authors the open-ended HTML/SVG market report
       scoring/
-        scorers.py        JobQualityScorer(weave.Scorer)
+        scorers.py        JobQualityScorer + SubmissionGuardrail (weave.Scorer)
+        leaderboard.py    publishes reputation as a native Weave Leaderboard
       jobs/
         schema.py         Job, Bid, Result (pydantic)
-        seed.py           demo job generators
+        seed.py           demo job generators (categories + 3-hop complex)
       sim/
         phase0.py         smoke test (one job end-to-end)
-        engine.py         market tick / run loop
-        scenario.py       scripted demo (deterministic, seeded)
-        shock.py          kill-agent / demand-spike injectors
+        engine.py         Market class — full lifecycle, fork, scenario runner
+        shock.py          kill-top-agent / demand-spike injectors
+      eval/
+        heldout.py        20 held-out + 5 unseen-category eval jobs
+        allocators.py     market vs single/random/round-robin assignment rules
+        run_eval.py       the formal weave.Evaluation harness
+        stats.py          convergence + specialization statistics
+      market/
+        lifecycle.py      failure penalties → bankruptcy; fork funding
+        matching.py       RedisVL capability matching
       api/
         main.py           FastAPI app, CORS, startup
-        agui.py           AG-UI SSE endpoint (/agui)
-        rest.py           REST control endpoints
-        ws.py             WebSocket event projection
+        agui.py           AG-UI live stream (STATE_SNAPSHOT + STATE_DELTA)
+        state.py          market snapshot read off Redis primitives
+        rest.py           /sim/run trigger
+        control.py        HITL: post job, central bank, approval loop
   frontend/
     package.json
     app/
@@ -276,14 +291,21 @@ npm run dev
 # → http://localhost:3000
 ```
 
-### 5. Phase 0 smoke test
+### 5. Run things
 
 ```bash
 cd backend
-uv run python -m canopy.sim.phase0
-# Runs one job end-to-end; prints the worker output.
-# Check your Weave project for the thread → turn → step trace.
+uv run python -m canopy.sim.phase0        # smoke test: one job end-to-end
+uv run python -m canopy.sim.engine --jobs 13 --sabotage   # full market scenario (CLI)
+uv run python -m canopy.eval.run_eval --quick             # evaluation smoke
+uv run python -m canopy.eval.run_eval                     # full eval (5 allocators × 3 seeds)
 ```
+
+Or drive everything from the trading floor at `localhost:3000`:
+**▶ run scenario**, post a job, **☠ kill top agent** (approve in the HITL card), **⚡ demand spike** — and watch prices jump and re-clear.
+
+> If `uv run uvicorn` resolves to a system uvicorn, use
+> `uv run python -m uvicorn canopy.api.main:app` instead.
 
 ---
 
@@ -320,7 +342,7 @@ Post → Discover (RedisVL match) → Bid (reverse auction) → Award + Escrow
 2. **0:20–1:05** Post a real job from the ControlPanel. Bids stream into the order book (controlled gen-UI). Tap a bid → declarative bid-comparison panel. Winner executes, subcontracts, delivers — agent draws an open-ended HTML/SVG view in an iframe. *Name the spectrum out loud.*
 3. **1:05–1:55** Let rounds run: price chart converges, leaderboard reshuffles, an agent goes bankrupt, a specialist emerges. "Nobody set that price."
 4. **1:55–2:35** The shock — kill the top agent. Prices jump, new specialist rises, market re-clears on its own.
-5. **2:35–3:00** Proof — Weave UI (thread trace, Monitor failures → bankruptcy, Evaluation vs. baselines), Redis Insight (order-book ZSET + ledger Stream on Redis Cloud). Close: "the allocation layer for agent fleets."
+5. **2:35–3:00** Proof — Weave UI (thread trace, scorer verdicts → bankruptcy, the Evaluation vs. baselines, the reputation Leaderboard), Redis Insight (order-book ZSET + ledger Stream on Redis Cloud). Close: "the allocation layer for agent fleets."
 
 ---
 
@@ -331,7 +353,7 @@ Post → Discover (RedisVL match) → Bid (reverse auction) → Award + Escrow
 | **0 — Skeleton** | Repo, Redis, Weave init, one job end-to-end, AG-UI frontend boots | Weave thread trace visible; frontend reads AG-UI shared state |
 | **1 — Market core** | Order book + bid book (ZSETs), reverse auction, escrow, ledger (Stream), settlement | `sim` posts jobs, agents bid, ZSET selects winner, ledger records all |
 | **2 — Weave brain** | `JobQualityScorer`, EMA reputation, guardrail scorer, Weave Leaderboard | Bad job rejected pre-payment; Leaderboard updates live |
-| **3 — Emergence** | Heterogeneous agents + strategies, RedisVL matching, subcontracting, fork, Monitor → bankruptcy | Clearing price converges; specialist emerges; Monitor drives ≥1 bankruptcy |
+| **3 — Emergence** | Heterogeneous agents + strategies, RedisVL matching, subcontracting, fork, scorer-failure penalties → bankruptcy | Clearing price converges; specialist emerges; scorer failures drive ≥1 bankruptcy |
 | **4 — Trading-floor UI** | Full gen-UI spectrum: controlled widgets, declarative panel, open iframe | All three patterns render on one AG-UI connection |
 | **5 — HITL + shock** | ControlPanel (post job, central bank, shock.py) with AG-UI approval | Human posts job; shock triggers visible re-pricing and recovery |
 | **6 — Eval + polish** | `weave.Evaluation` (market vs. baselines), deterministic scenario, backup video, Devpost | Evaluation shows market beats baselines with a quotable metric |
