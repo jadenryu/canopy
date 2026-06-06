@@ -1,6 +1,7 @@
 "use client";
 
 import { SpecSection, UISpec } from "@/lib/useMarketState";
+import { Empty } from "./Empty";
 import { Panel } from "./Panel";
 
 // Declarative (semi-open) gen-UI: the backend streams a STRUCTURED UI SPEC
@@ -11,11 +12,16 @@ function Section({ section }: { section: SpecSection }) {
   switch (section.type) {
     case "stats":
       return (
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           {section.items.map((s) => (
-            <div key={s.label} className="rounded border border-neutral-800 px-2 py-1">
-              <div className="text-[10px] uppercase text-neutral-500">{s.label}</div>
-              <div className="text-xs">{s.value}</div>
+            <div
+              key={s.label}
+              className="rounded-md border border-edge bg-surface-2 px-2.5 py-1.5"
+            >
+              <div className="text-[10px] tracking-wider text-ink-faint uppercase">
+                {s.label}
+              </div>
+              <div className="text-sm tabular-nums text-ink">{s.value}</div>
             </div>
           ))}
         </div>
@@ -23,10 +29,12 @@ function Section({ section }: { section: SpecSection }) {
     case "table":
       return (
         <table className="w-full text-left text-xs">
-          <thead className="text-neutral-500">
-            <tr>
+          <thead>
+            <tr className="text-[10px] uppercase tracking-wider text-ink-faint">
               {section.columns.map((c) => (
-                <th key={c} className="pb-1 pr-2">{c}</th>
+                <th key={c} className="pb-1 pr-2 font-medium">
+                  {c}
+                </th>
               ))}
             </tr>
           </thead>
@@ -34,8 +42,8 @@ function Section({ section }: { section: SpecSection }) {
             {section.rows.map((row, i) => (
               <tr
                 key={i}
-                className={`border-t border-neutral-900 ${
-                  row.highlight ? "bg-green-950/60 text-green-300" : ""
+                className={`border-t border-edge/60 ${
+                  row.highlight ? "bg-positive/10 text-positive" : ""
                 }`}
               >
                 {row.cells.map((cell, j) => (
@@ -50,7 +58,7 @@ function Section({ section }: { section: SpecSection }) {
         </table>
       );
     case "note":
-      return <p className="text-[11px] italic text-neutral-500">{section.text}</p>;
+      return <p className="text-[11px] italic text-ink-faint">{section.text}</p>;
     default:
       return null;
   }
@@ -60,13 +68,13 @@ export function DeclarativePanel({ spec }: { spec: UISpec | null }) {
   return (
     <Panel title={spec?.title ?? "Job detail"} pattern="declarative" className="h-72">
       {!spec ? (
-        <div className="py-4 text-center text-xs text-neutral-600">
+        <Empty glyph="⧉" hint="the backend streams a UI spec on first award">
           awaiting first award…
-        </div>
+        </Empty>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex animate-slide-in flex-col gap-3">
           {spec.subtitle && (
-            <p className="text-[11px] text-neutral-400">{spec.subtitle}</p>
+            <p className="text-[11px] text-ink-dim">{spec.subtitle}</p>
           )}
           {spec.sections.map((s, i) => (
             <Section key={i} section={s} />
