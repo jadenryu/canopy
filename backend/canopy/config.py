@@ -40,6 +40,17 @@ class Settings(BaseSettings):
     max_subcontract_depth: int = 2
     rng_seed: int = 42
 
+    # --- auction / bidding ---
+    rep_weight_alpha: float = 1.0  # effective_bid = price / (1 + alpha*(rep-0.5))
+    reputation_beta: float = 0.3  # EMA weight of the newest score
+    margin_min: float = 0.10
+    margin_max: float = 0.60
+    reserve_price: float = 0.5  # minimum bid — prevents race-to-zero
+    model_cost_cheap: float = 1.0  # nominal per-job cost units by model tier
+    model_cost_premium: float = 3.0
+    default_bounty_cap: float = 10.0
+    human_balance: float = 10_000.0  # the human client's wallet
+
     # --- worker cost control ---
     worker_max_tokens: int = 600
 

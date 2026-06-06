@@ -1,11 +1,15 @@
-"""Worker agent — Phase 0: minimal OpenAI-backed executor.
+"""Worker agent — OpenAI-backed executor on top of the bidding Agent base.
 
-Later phases add: bid(), strategies, skill embeddings, subcontracting.
-Every step is a @weave.op so a job's trace reads session -> turns -> steps.
+Every step is a @weave.op so a job's trace reads thread -> turns -> steps.
+`mock=True` skips the LLM (canned output) for fast market-plumbing tests.
 """
+import random
+
 import weave
 from openai import AsyncOpenAI
 
+from canopy.agents.base import Agent
+from canopy.agents.strategies import Strategy
 from canopy.config import settings
 from canopy.jobs.schema import Job, JobResult
 
@@ -19,14 +23,29 @@ def _openai() -> AsyncOpenAI:
     return _client
 
 
-class Worker:
-    def __init__(self, agent_id: str, model: str | None = None):
-        self.id = agent_id
-        self.model = model or settings.worker_model_cheap
+class Worker(Agent):
+    def __init__(
+        self,
+        agent_id: str,
+        strategy: Strategy | None = None,
+        model_tier: str = "cheap",
+        rng: random.Random | None = None,
+        mock: bool = False,
+    ):
+        super().__init__(agent_id, strategy=strategy, model_tier=model_tier, rng=rng)
+        self.model = (
+            settings.worker_model_premium
+            if model_tier == "premium"
+            else settings.worker_model_cheap
+        )
+        self.mock = mock
 
     @weave.op
     async def execute_job(self, job: Job) -> JobResult:
-        output = await self.llm_call(job.spec)
+        if self.mock:
+            output = f"[mock execution by {self.id}]\nFINAL ANSWER: (mock)"
+        else:
+            output = await self.llm_call(job.spec)
         return JobResult(job_id=job.id, agent_id=self.id, output=output)
 
     @weave.op
