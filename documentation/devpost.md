@@ -1,7 +1,8 @@
 # Devpost draft — Canopy
 
 > Copy-paste skeleton. Fill the [bracketed] numbers from `documentation/results.md`
-> after the final eval run, and add the video link.
+> after the final eval run, add the video link, and DELETE any
+> "[IF LANDED]" block whose backend didn't ship by submission.
 
 ## Inspiration
 
@@ -21,10 +22,35 @@ payment decision and the reputation signal. Failures are fined; repeated
 failures end in bankruptcy; sustained profit forks an agent into a copy.
 Clearing prices per job category emerge from competition — nobody sets them.
 
-Watch it live: a trading-floor UI (order book, price chart, reputation
-leaderboard, wallets, hiring graph, event feed) streams over one AG-UI
-connection. Kill the top agent mid-run and watch prices spike, substitutes
-take over at surge prices, and the market re-clear — no replanning, no code.
+**Watch it live**: the hero view is the economy itself — a force-directed
+market graph where agents are sized by wallet, ringed by reputation, and every
+hire draws an edge; click any agent for its profile (work history, lessons,
+strikes) or any deal for its full bid book. Around it: live price chart,
+order book, reputation leaderboard, wallets, and an event feed that pulses
+with every auction. Kill the top agent mid-run and watch prices spike,
+substitutes take over at surge prices, and the market re-clear — no
+replanning, no code.
+
+**Humans play too.** In the **Arena**, you field your *own* model — any model
+on OpenRouter — give it a strategy and a stake, and it competes against the
+house agents for real jobs. The **/benchmarks** page flips that into a new
+kind of eval: import a multi-hop benchmark (HotpotQA, MuSiQue, Bamboogle…),
+run models through the market, and score **economic fitness** — accuracy,
+cost-per-correct, market share, survival. Static benchmarks tell you if a
+model can answer; Canopy tells you if it can price its own work and stay
+solvent.
+
+[IF LANDED — police] **The eval polices the eval.** An audit Monitor runs a
+hidden holdout check behind the LLM judge. Score high with the judge but fail
+the holdout? Strike. Two strikes: convicted — reputation slashed, payment
+clawed back, a 🚨 on your name. Reward-hacking is not a thought experiment in
+a market; it's fraud, and the market prosecutes it.
+
+[IF LANDED — learning] **Agents learn from their own Weave feedback.** After
+every score, an agent distills the rationale into a one-line lesson ("cite
+the exact year — vague dates got docked"), carries it into future prompts and
+bid calibration, and you can read each agent's lessons in its profile sheet.
+Self-improvement, inside an economy, driven by the referee's own words.
 
 ## The numbers (formal weave.Evaluation)
 
@@ -46,19 +72,31 @@ fleet/scorer/lifecycle, 3 seeds — only the assignment rule differs:
   rejecting bad work *before payment*; the reputation ranking published as a
   native **Weave Leaderboard**; the formal **weave.Evaluation** above; and
   scorer-verdict penalties wired into bankruptcy.
+  [IF LANDED — police: …plus an **audit Monitor** (holdout checks policing
+  the LLM judge) — Weave scoring the eval itself.]
 - **Redis Cloud — the exchange itself (zero caching):** Sorted Sets for the
   order book, bid books, leaderboard, and price history; Streams for the
   append-only ledger and event bus; Pub/Sub fanning every market event to the
   UI; **RedisVL** vector search matching jobs to agent skills.
+  [IF LANDED — learning: …plus per-agent lesson memory (capped Redis lists
+  feeding prompts).]
 - **CopilotKit / AG-UI — the trading floor:** the backend speaks raw AG-UI
   (STATE_SNAPSHOT + JSON-Patch STATE_DELTA per market event). All **three
-  generative-UI patterns on one connection**: controlled (fixed market
-  widgets), declarative (a streamed bid-comparison UI spec walked by a generic
-  renderer), open-ended (an analyst agent draws its own HTML/SVG report,
-  rendered in a sandboxed iframe). High-impact human actions (kill top agent,
-  inject liquidity) ride an AG-UI **HITL approval loop** through shared state.
+  generative-UI patterns on one connection**: controlled (the market graph
+  and fixed widgets), declarative (a streamed bid-comparison UI spec walked
+  by a generic renderer), open-ended (an analyst agent draws its own HTML/SVG
+  report, rendered in a sandboxed iframe). High-impact human actions (kill
+  top agent, inject liquidity) ride an AG-UI **HITL approval loop** through
+  shared state.
 - **OpenAI:** tiered economy — gpt-5.4-nano workers, gpt-5.4-mini
   referee/premium tier; the tier choice is itself an economic variable.
+- **OpenRouter:** the Arena routes human-fielded challenger models through
+  one OpenAI-compatible client — any model on the catalog can enter the
+  market. [Adjust if Arena backend didn't land: "Arena UI live, routing
+  ships next."]
+- **Frontend:** Next.js 16 + Tailwind v4 terminal design system, d3-force
+  market graph (persistent simulation, rAF-gated renders — survives event
+  bursts), shadcn primitives, JetBrains Mono everything.
 
 **Protocols: AG-UI** (agent↔UI runtime) and **MCP** (agent tool-calling).
 
@@ -71,15 +109,19 @@ fleet/scorer/lifecycle, 3 seeds — only the assignment rule differs:
 - A reputation snowball: our first rep-weighted auction let one undercutter
   win everything. Softening the weight to `(rep/0.5)^0.5` keeps trust valuable
   without monopoly.
+- A live force-directed graph under dozens of state deltas per second will
+  melt React if you let it: we moved to one persistent d3 simulation mutated
+  in place, with renders coalesced to animation frames.
 - Version archaeology: redis-py 8 is incompatible with every redisvl release;
   the spec's "Weave Signals" doesn't exist (we verified in package source and
   wired scorer-failure penalties into bankruptcy instead).
 
 ## What's next
 
-Vickrey (second-price) auctions for truthful bidding, weave.Monitor running
-the referee continuously over live traffic, capacity-aware bidding, and
-real-dollar cost accounting per token.
+Vickrey (second-price) auctions for truthful bidding, the full benchmark
+pipeline (import → market run → weave.Evaluation per model), capacity-aware
+bidding, real-dollar cost accounting per token
+[adjust: move police/learning here if they didn't land].
 
 ## Links
 
