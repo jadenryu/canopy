@@ -16,6 +16,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+# python-template 'lib/' must not swallow frontend source
+!frontend/lib/
 parts/
 sdist/
 var/

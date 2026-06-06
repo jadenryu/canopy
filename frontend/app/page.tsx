@@ -6,7 +6,7 @@ import { useMarketState } from "@/lib/useMarketState";
 // Later phases replace this with the trading floor (OrderBook, PriceChart,
 // Leaderboard, Wallets, HiringGraph, EventFeed, ControlPanel).
 export default function Home() {
-  const { state, run } = useMarketState();
+  const { state, start, running } = useMarketState();
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8 font-mono">
@@ -32,10 +32,11 @@ export default function Home() {
       </div>
 
       <button
-        onClick={() => run?.()}
-        className="rounded-md border border-neutral-600 px-4 py-2 text-sm hover:bg-neutral-800"
+        onClick={() => start()}
+        disabled={running}
+        className="rounded-md border border-neutral-600 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
       >
-        ping market
+        {running ? "pinging…" : "ping market"}
       </button>
     </main>
   );
