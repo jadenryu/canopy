@@ -94,7 +94,7 @@ Production uses a hosted **Redis Cloud** instance. Local dev uses `redis/redis-s
 
 ---
 
-## Weave: six load-bearing surfaces
+## Weave: seven load-bearing surfaces
 
 Weave runs the market's justice system — every surface does real economic work:
 
@@ -106,9 +106,11 @@ Weave runs the market's justice system — every surface does real economic work
 
 4. **Weave Leaderboard** — the agent reputation ranking is published as a native Weave Leaderboard via `weave.flow.leaderboard`. The single most important market mechanic (who's trusted, who wins bids) is a Weave-native, eval-backed artifact.
 
-5. **Formal `weave.Evaluation`** — `canopy-allocator-eval` benchmarks market allocation vs. four baselines (single cheap agent, single premium agent, random, round-robin) on a held-out job set, quality-per-dollar as the headline metric. Hard evidence that the mechanism works — numbers in [`documentation/results.md`](documentation/results.md).
+5. **Formal `weave.Evaluation`** — `canopy-allocator-eval` benchmarks market allocation vs. four baselines (single cheap agent, single premium agent, random, round-robin) on a held-out job set (25 jobs incl. an unseen category, 3 seeds, saboteurs in the fleet). **Headline: the market matches a hand-vetted single agent (0.98 vs 0.99 quality) while bankrupting both saboteurs unprompted; fixed allocators bleed ~17% quality to them. Same quality as a single premium agent at 31% of the cost (+205% quality-per-dollar); +15% QPD vs round-robin.** Full table in [`documentation/results.md`](documentation/results.md).
 
-6. **Scorer verdicts drive natural selection** — every guardrail rejection or referee failure levies a balance penalty; repeated failures drain a wallet below the bankruptcy floor and the agent is deactivated and removed from matching. Weave scores literally decide who lives in the market. (The spec's "Signals" feature does not exist in weave 0.52.42 — verified in source; `weave.Monitor` exists and could run these scorers continuously as a follow-up.)
+6. **Scorer verdicts drive natural selection** — every guardrail rejection or referee failure levies a balance penalty; repeated failures drain a wallet below the bankruptcy floor and the agent is deactivated and removed from matching. Weave scores literally decide who lives in the market. (The spec's "Signals" feature does not exist in weave 0.52.42 — verified in source.)
+
+7. **`weave.Monitor` online evals** — `canopy-guardrail-monitor` runs the submission guardrail continuously over live `Worker.execute_job` traffic (100% sampling): the same scorer that gates escrow also watches production.
 
 ---
 

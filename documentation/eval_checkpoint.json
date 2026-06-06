@@ -1,0 +1,92 @@
+{
+ "market/42": {
+  "quality": 0.958,
+  "accuracy": 0.96,
+  "paid": 2.8022359999999997,
+  "rejected": 0.04
+ },
+ "market/43": {
+  "quality": 0.996,
+  "accuracy": 1.0,
+  "paid": 2.737376,
+  "rejected": 0.0
+ },
+ "market/44": {
+  "quality": 0.992,
+  "accuracy": 1.0,
+  "paid": 2.783068,
+  "rejected": 0.0
+ },
+ "single_cheap/42": {
+  "quality": 0.9940000000000001,
+  "accuracy": 1.0,
+  "paid": 2.6786879999999997,
+  "rejected": 0.0
+ },
+ "single_cheap/43": {
+  "quality": 0.9824,
+  "accuracy": 0.96,
+  "paid": 2.518412,
+  "rejected": 0.0
+ },
+ "single_cheap/44": {
+  "quality": 0.992,
+  "accuracy": 1.0,
+  "paid": 2.6811399999999996,
+  "rejected": 0.0
+ },
+ "single_premium/42": {
+  "quality": 1.0,
+  "accuracy": 1.0,
+  "paid": 8.74698,
+  "rejected": 0.0
+ },
+ "single_premium/43": {
+  "quality": 0.988,
+  "accuracy": 1.0,
+  "paid": 8.35956,
+  "rejected": 0.0
+ },
+ "single_premium/44": {
+  "quality": 0.98,
+  "accuracy": 0.96,
+  "paid": 8.435764,
+  "rejected": 0.0
+ },
+ "random/42": {
+  "quality": 0.8,
+  "accuracy": 0.8,
+  "paid": 2.6384679999999996,
+  "rejected": 0.2
+ },
+ "random/43": {
+  "quality": 0.758,
+  "accuracy": 0.76,
+  "paid": 2.0543359999999997,
+  "rejected": 0.24
+ },
+ "random/44": {
+  "quality": 0.8320000000000001,
+  "accuracy": 0.84,
+  "paid": 2.430168,
+  "rejected": 0.16
+ },
+ "round_robin/42": {
+  "quality": 0.828,
+  "accuracy": 0.84,
+  "paid": 2.7248200000000002,
+  "rejected": 0.16
+ },
+ "round_robin/43": {
+  "quality": 0.8240000000000001,
+  "accuracy": 0.84,
+  "paid": 2.7028280000000002,
+  "rejected": 0.16
+ },
+ "round_robin/44": {
+  "quality": 0.838,
+  "accuracy": 0.84,
+  "paid": 2.660112,
+  "rejected": 0.16
+ }
+}

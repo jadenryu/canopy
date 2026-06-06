@@ -55,14 +55,28 @@ Self-improvement, inside an economy, driven by the referee's own words.
 ## The numbers (formal weave.Evaluation)
 
 Held-out job set (20 multi-hop + 5 unseen-category extraction), identical
-fleet/scorer/lifecycle, 3 seeds — only the assignment rule differs:
+fleet/scorer/lifecycle (including 2 saboteur agents), 3 seeds — only the
+assignment rule differs:
 
-- **Market: [+X]% quality-per-dollar vs round-robin, [+Y]% vs a single
-  premium agent.**
-- Saboteur agents: guardrail-rejected pre-payment, fined, **bankrupt within 3
-  failures** — no code path special-cases them; the mechanism does it.
-- Shock recovery: top-agent death = 100% capacity loss for a single-agent
-  setup; the market re-cleared within [N] jobs at a [Z]% transient premium.
+| allocator | quality | accuracy | paid/job | quality-per-$ |
+|---|---|---|---|---|
+| **market** | **0.982** | **0.99** | 2.77 | 0.354 |
+| single cheap agent | 0.989 | 0.99 | 2.63 | 0.377 |
+| single premium agent | 0.989 | 0.99 | 8.51 | 0.116 |
+| random | 0.797 | 0.80 | 2.37 | 0.338 |
+| round-robin | 0.830 | 0.84 | 2.70 | 0.308 |
+
+- **Market: +18% quality and +15% quality-per-dollar vs round-robin; same
+  quality as a single premium agent at 31% of the cost (+205% QPD).**
+- The market **matches a hand-vetted single agent while carrying two
+  saboteurs in its fleet** — it bankrupted both during warm-up, unprompted.
+  The fixed allocators, which can't react, bled ~17% quality to the same
+  saboteurs across the whole window. No code path special-cases bad actors;
+  the mechanism does it.
+- A vetted single agent ties on efficiency — until it dies. Top-agent death
+  is 100% capacity loss for the single-agent setup; the market re-cleared a
+  demand burst right after losing its top agent at a ~60% transient surge
+  premium (2.04 → 3.35 → back to ~2.1).
 
 ## How we built it
 
