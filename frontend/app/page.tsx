@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { Arena } from "@/components/Arena";
 import { ApprovalCard, ControlPanel } from "@/components/ControlPanel";
 import { DeclarativePanel } from "@/components/DeclarativePanel";
 import { EventFeed } from "@/components/EventFeed";
@@ -15,6 +17,15 @@ import { ReportFrame } from "@/components/ReportFrame";
 import { Wallets } from "@/components/Wallets";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { runScenario, useMarketState } from "@/lib/useMarketState";
+
+// big moments route attention to the tab where they're visible
+const EVENT_TAB: Record<string, string> = {
+  shock: "floor",
+  bankruptcy: "floor",
+  fork: "floor",
+  report_ready: "deals",
+  scenario_finished: "deals",
+};
 
 // One stat in the ticker strip under the header.
 function Tick({ label, value, tone }: { label: string; value: string | number; tone?: string }) {
@@ -34,7 +45,10 @@ export default function Home() {
   const [launching, setLaunching] = useState(false);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [tab, setTab] = useState("floor");
+  const [flash, setFlash] = useState<Set<string>>(new Set());
   const watched = useRef(false);
+  const seenEvents = useRef(0);
 
   // open the live watch stream once on mount
   useEffect(() => {
@@ -55,8 +69,32 @@ export default function Home() {
     }
   };
 
-  const agents = state?.agents ?? [];
-  const jobs = state?.jobs ?? [];
+  const stateAgents = state?.agents;
+  const stateJobs = state?.jobs;
+  const stateEvents = state?.events;
+  const agents = useMemo(() => stateAgents ?? [], [stateAgents]);
+  const jobs = useMemo(() => stateJobs ?? [], [stateJobs]);
+  const events = useMemo(() => stateEvents ?? [], [stateEvents]);
+
+  // flash a hidden tab's trigger when a big moment lands there
+  useEffect(() => {
+    const fresh = events.slice(seenEvents.current);
+    seenEvents.current = events.length;
+    const targets = fresh
+      .map((e) => EVENT_TAB[e.type])
+      .filter((t): t is string => !!t && t !== tab);
+    if (targets.length) setFlash((prev) => new Set([...prev, ...targets]));
+  }, [events, tab]);
+
+  const switchTab = (v: string) => {
+    setTab(v);
+    setFlash((prev) => {
+      const next = new Set(prev);
+      next.delete(v);
+      return next;
+    });
+  };
+
   const settledJobs = jobs.filter((j) => j.status === "settled");
   const volume = settledJobs.reduce((s, j) => s + j.price, 0);
   const bankrupt = agents.filter((a) => a.status === "bankrupt").length;
@@ -108,6 +146,12 @@ export default function Home() {
               {running ? "LIVE" : "IDLE"}
             </span>
           </span>
+          <Link
+            href="/benchmarks"
+            className="rounded-md border border-edge px-3 py-1 text-ink-dim transition-colors hover:border-edge-2 hover:text-ink"
+          >
+            benchmarks ↗
+          </Link>
           <button
             onClick={() => start()}
             disabled={running}
@@ -154,13 +198,22 @@ export default function Home() {
       </div>
 
       {/* the floor, organized — not a wall of panels */}
-      <Tabs defaultValue="floor">
+      <Tabs value={tab} onValueChange={switchTab}>
         <TabsList className="border border-edge bg-surface font-mono">
           <TabsTrigger value="floor" className="text-xs">
             trading floor
+            {flash.has("floor") && (
+              <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-working" />
+            )}
           </TabsTrigger>
           <TabsTrigger value="deals" className="text-xs">
             deals & reports
+            {flash.has("deals") && (
+              <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-working" />
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="arena" className="text-xs">
+            arena
           </TabsTrigger>
         </TabsList>
         <TabsContent value="floor" className="mt-2 grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -173,6 +226,9 @@ export default function Home() {
           <HiringGraph jobs={jobs} />
           <DeclarativePanel spec={state?.job_detail ?? null} />
           <ReportFrame html={state?.report_html ?? null} />
+        </TabsContent>
+        <TabsContent value="arena" className="mt-2">
+          <Arena agents={agents} />
         </TabsContent>
       </Tabs>
 

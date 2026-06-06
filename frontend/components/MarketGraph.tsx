@@ -6,6 +6,9 @@ import {
   forceLink,
   forceManyBody,
   forceSimulation,
+  type ForceCenter,
+  type ForceCollide,
+  type ForceLink,
   type SimulationLinkDatum,
   type SimulationNodeDatum,
 } from "d3-force";
@@ -101,7 +104,54 @@ export function MarketGraph({
     return [...byPair.values()];
   }, [jobs]);
 
+  // ONE persistent simulation for the component's lifetime. State bursts
+  // (dozens of deltas/sec mid-scenario) only update its data in place and
+  // gently reheat — never recreate forces. Renders are rAF-gated so React
+  // paints at most once per frame no matter how fast ticks or deltas arrive.
   useEffect(() => {
+    let raf = 0;
+    const sim = forceSimulation<GNode>([])
+      .force("link", forceLink<GNode, GLink>([]).id((d) => d.id).distance(110).strength(0.25))
+      .force("charge", forceManyBody().strength(-220))
+      .force("center", forceCenter(0, 0).strength(0.06))
+      .force("collide", forceCollide<GNode>().radius((d) => nodeRadius(d.agent) + 14))
+      .alphaDecay(0.04)
+      .on("tick", () => {
+        if (raf) return; // coalesce ticks into one paint per frame
+        raf = requestAnimationFrame(() => {
+          raf = 0;
+          bump((n) => n + 1);
+        });
+      })
+      .stop();
+    simRef.current = sim;
+    return () => {
+      cancelAnimationFrame(raf);
+      sim.stop();
+      simRef.current = null;
+    };
+  }, []);
+
+  // keep node payloads (wallet size, reputation ring) fresh on EVERY delta.
+  // Repaint goes through the sim's tick→rAF path: a whisper of alpha makes
+  // the graph visibly breathe when money moves, and keeps renders frame-gated.
+  useEffect(() => {
+    const map = nodesRef.current;
+    let dirty = false;
+    for (const a of agents) {
+      const n = map.get(a.id);
+      if (n && n.agent !== a) {
+        n.agent = a;
+        dirty = true;
+      }
+    }
+    const sim = simRef.current;
+    if (dirty && sim) sim.alpha(Math.max(sim.alpha(), 0.05)).restart();
+  }, [agents]);
+
+  useEffect(() => {
+    const sim = simRef.current;
+    if (!sim) return;
     const map = nodesRef.current;
     const want = new Set<string>(["human", ...agents.map((a) => a.id)]);
     // upsert
@@ -132,29 +182,20 @@ export function MarketGraph({
       )
       .map((l) => ({ ...l }));
 
-    simRef.current?.stop();
-    const sim = forceSimulation<GNode>(nodes)
-      .force(
-        "link",
-        forceLink<GNode, GLink>(simLinks)
-          .id((d) => d.id)
-          .distance(110)
-          .strength(0.25)
-      )
-      .force("charge", forceManyBody().strength(-220))
-      .force("center", forceCenter(size.w / 2, size.h / 2).strength(0.06))
-      .force(
-        "collide",
-        forceCollide<GNode>().radius((d) => nodeRadius(d.agent) + 14)
-      )
-      .alpha(0.6)
-      .alphaDecay(0.04)
-      .on("tick", () => bump((n) => n + 1));
-    simRef.current = sim;
-    return () => void sim.stop();
+    // update the persistent sim in place + gentle reheat
+    sim.nodes(nodes);
+    (sim.force("link") as ForceLink<GNode, GLink>).links(simLinks);
+    (sim.force("center") as ForceCenter<GNode>).x(size.w / 2).y(size.h / 2);
+    (sim.force("collide") as ForceCollide<GNode>).radius(
+      (d) => nodeRadius(d.agent) + 14
+    );
+    sim.alpha(0.5).restart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agents.map((a) => a.id).join(","), links.length, size.w, size.h]);
 
+  /* eslint-disable react-hooks/refs -- d3-force mutates node x/y in place;
+     reading the ref at render time is the whole point of the pattern, and
+     re-renders are explicitly driven by the sim's rAF-gated tick handler. */
   const nodes = [...nodesRef.current.values()];
   const pos = (id: string) => nodesRef.current.get(id);
 
