@@ -61,6 +61,7 @@ class Settings(BaseSettings):
 
     # --- worker cost control ---
     worker_max_tokens: int = 600
+    analyst_max_tokens: int = 2500  # the HTML/SVG market report
 
 
 settings = Settings()

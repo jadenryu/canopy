@@ -1,43 +1,98 @@
 "use client";
 
-import { useMarketState } from "@/lib/useMarketState";
+import { useEffect, useRef, useState } from "react";
 
-// Phase 0: prove the AG-UI pipe works — render one value from shared state.
-// Later phases replace this with the trading floor (OrderBook, PriceChart,
-// Leaderboard, Wallets, HiringGraph, EventFeed, ControlPanel).
+import { DeclarativePanel } from "@/components/DeclarativePanel";
+import { EventFeed } from "@/components/EventFeed";
+import { HiringGraph } from "@/components/HiringGraph";
+import { Leaderboard } from "@/components/Leaderboard";
+import { OrderBook } from "@/components/OrderBook";
+import { PriceChart } from "@/components/PriceChart";
+import { ReportFrame } from "@/components/ReportFrame";
+import { Wallets } from "@/components/Wallets";
+import { runScenario, useMarketState } from "@/lib/useMarketState";
+
+// The trading floor: a pure projection of backend state over ONE AG-UI
+// connection, demonstrating all three gen-UI patterns (see panel badges).
 export default function Home() {
   const { state, start, running } = useMarketState();
+  const [launching, setLaunching] = useState(false);
+  const watched = useRef(false);
+
+  // open the live watch stream once on mount
+  useEffect(() => {
+    if (!watched.current) {
+      watched.current = true;
+      start();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const launch = async (mock: boolean) => {
+    setLaunching(true);
+    try {
+      if (!running) start(); // make sure the watch stream is live
+      await runScenario({ jobs: 13, mock });
+    } finally {
+      setTimeout(() => setLaunching(false), 1500);
+    }
+  };
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8 font-mono">
-      <h1 className="text-3xl font-bold tracking-tight">🌳 Canopy</h1>
-      <p className="text-sm opacity-70">
-        self-organizing agent labor market — phase 0 skeleton
-      </p>
-
-      <div className="rounded-lg border border-neutral-700 p-6 text-sm">
-        <div>
-          market: <span className="font-bold">{state?.market ?? "—"}</span>
-        </div>
-        <div>
-          redis:{" "}
-          <span
-            className={state?.redis_connected ? "text-green-500" : "text-red-500"}
-          >
-            {state?.redis_connected ? "connected" : "disconnected"}
+    <main className="flex min-h-screen flex-col gap-3 bg-black p-4 font-mono text-neutral-200">
+      <header className="flex items-center justify-between">
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-xl font-bold tracking-tight">🌳 Canopy</h1>
+          <span className="text-xs text-neutral-500">
+            self-organizing agent labor market — live floor
           </span>
         </div>
-        <div>agents: {state?.agents?.length ?? 0}</div>
-        <div>open jobs: {state?.order_book?.length ?? 0}</div>
-      </div>
+        <div className="flex items-center gap-2 text-xs">
+          <span
+            className={`h-2 w-2 rounded-full ${
+              running ? "bg-green-500" : "bg-neutral-600"
+            }`}
+          />
+          <span className="text-neutral-500">
+            {running ? "live" : "stream idle"}
+          </span>
+          <button
+            onClick={() => start()}
+            disabled={running}
+            className="rounded border border-neutral-700 px-3 py-1 hover:bg-neutral-900 disabled:opacity-40"
+          >
+            watch
+          </button>
+          <button
+            onClick={() => launch(false)}
+            disabled={launching}
+            className="rounded border border-green-800 px-3 py-1 text-green-400 hover:bg-green-950 disabled:opacity-40"
+          >
+            {launching ? "launching…" : "▶ run scenario"}
+          </button>
+          <span className="text-neutral-600">
+            ledger: {state?.ledger_entries ?? 0}
+          </span>
+        </div>
+      </header>
 
-      <button
-        onClick={() => start()}
-        disabled={running}
-        className="rounded-md border border-neutral-600 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
-      >
-        {running ? "pinging…" : "ping market"}
-      </button>
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <OrderBook jobs={state?.jobs ?? []} />
+        <PriceChart prices={state?.prices ?? {}} />
+        <Leaderboard agents={state?.agents ?? []} />
+        <Wallets agents={state?.agents ?? []} />
+        <HiringGraph jobs={state?.jobs ?? []} />
+        <EventFeed events={state?.events ?? []} />
+        <DeclarativePanel spec={state?.job_detail ?? null} />
+        <ReportFrame html={state?.report_html ?? null} />
+        <section className="flex h-72 flex-col justify-center gap-2 rounded-lg border border-dashed border-neutral-800 p-4 text-xs text-neutral-500">
+          <p className="font-bold text-neutral-400">gen-UI spectrum, one AG-UI connection:</p>
+          <p><span className="text-sky-400">controlled</span> — fixed widgets (order book, chart, leaderboard, wallets, graph, feed); the market only feeds them data.</p>
+          <p><span className="text-amber-400">declarative</span> — the bid-comparison panel renders a structured UI spec streamed by the backend.</p>
+          <p><span className="text-fuchsia-400">open-ended</span> — the analyst agent draws arbitrary HTML/SVG, sandboxed in an iframe.</p>
+          <p className="pt-2 text-neutral-600">phase 5 adds the control panel: post jobs, central-bank actions, and the shock.</p>
+        </section>
+      </div>
     </main>
   );
 }

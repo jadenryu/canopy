@@ -17,17 +17,20 @@ subcontracting yields a multi-level hiring graph.
 """
 import argparse
 import asyncio
+import json
 import random
 from collections import defaultdict
 
 import weave
 
+from canopy.agents.analyst import generate_report
 from canopy.agents.skills import GENERALIST_PROFILE, MANAGER_PROFILE, SPECIALIST_PROFILES
 from canopy.agents.strategies import Generalist, Lowballer, Manager, Specialist, Undercutter
 from canopy.agents.worker import Worker
 from canopy.config import settings
 from canopy.jobs.schema import Job, JobResult, JobStatus
 from canopy.jobs.seed import seed_jobs
+from canopy.api.state import JOB_DETAIL_KEY, REPORT_KEY
 from canopy.market import auction, events, ledger, lifecycle, matching, order_book, registry, settlement
 from canopy.market.ledger import LEDGER_STREAM
 from canopy.redis_client import get_redis
@@ -45,6 +48,7 @@ MARKET_KEY_PATTERNS = (
     "jobs:*",
     "prices:*",
     "skill:*",
+    "market:*",
     "escrow",
     "ledger",
     "events",
@@ -109,6 +113,7 @@ class Market:
                 return job, None
 
             job = await auction.award(job, winning_bid)
+            await self._publish_job_detail(job, placed, winning_bid)
 
             job.status = JobStatus.EXECUTING
             await order_book.save_job(job)
@@ -150,6 +155,45 @@ class Market:
             await self._maybe_fork(winner)
             self.job_log.append((job, result))
             return job, result
+
+    async def _publish_job_detail(self, job: Job, bids, winning_bid) -> None:
+        """Declarative gen-UI source: a structured bid-comparison spec the
+        frontend's generic renderer walks — schema-shaped, data-streamed."""
+        rows = []
+        for b in sorted(bids, key=lambda b: b.effective_bid):
+            rep = await registry.get_reputation(b.agent_id)
+            rows.append(
+                {
+                    "cells": [b.agent_id, f"{b.price:.2f}", f"{rep:.2f}", f"{b.effective_bid:.2f}"],
+                    "highlight": b.agent_id == winning_bid.agent_id,
+                }
+            )
+        spec = {
+            "type": "panel",
+            "title": f"Bid comparison — {job.id}",
+            "subtitle": job.spec,
+            "sections": [
+                {
+                    "type": "stats",
+                    "items": [
+                        {"label": "category", "value": job.category},
+                        {"label": "hops", "value": str(job.hops)},
+                        {"label": "bounty cap", "value": f"{job.bounty_cap:.2f}"},
+                        {"label": "client", "value": job.client_id},
+                    ],
+                },
+                {
+                    "type": "table",
+                    "columns": ["agent", "price", "rep", "effective bid"],
+                    "rows": rows,
+                },
+                {
+                    "type": "note",
+                    "text": "Reverse auction: lowest effective bid (price ÷ rep weight) wins.",
+                },
+            ],
+        }
+        await get_redis().set(JOB_DETAIL_KEY, json.dumps(spec))
 
     async def _maybe_fork(self, parent: Worker) -> None:
         if not await lifecycle.check_fork(parent.id):
@@ -270,7 +314,34 @@ async def print_reports(market: Market) -> None:
     print(f"\nledger entries: {ledger_len} | events: {events_len}")
 
 
-async def main(n_jobs: int, mock: bool, sabotage: bool) -> None:
+async def _publish_report(market: Market) -> None:
+    """Open-ended gen-UI source: the analyst draws its own HTML/SVG report."""
+    r = get_redis()
+    lines = []
+    for wid in sorted(market.workers):
+        a = await registry.get_agent(wid)
+        lines.append(
+            f"{a['id']}: strategy={a['strategy']} status={a['status']} "
+            f"balance={a['balance']:.2f} rep={a['reputation']:.3f} "
+            f"won={a['jobs_won']} failed={a['jobs_failed']}"
+        )
+    async for key in r.scan_iter(match="prices:*", count=200):
+        series = await r.zrange(key, 0, -1)
+        pts = ", ".join(f"{float(m.rsplit(':', 1)[1]):.2f}" for m in series)
+        lines.append(f"clearing prices {key.removeprefix('prices:')}: {pts}")
+    html = await generate_report("\n".join(lines), mock=market.mock)
+    await r.set(REPORT_KEY, html)
+    await events.emit("report_ready", {"chars": len(html)})
+
+
+async def run_scenario(
+    n_jobs: int = 13,
+    mock: bool = False,
+    sabotage: bool = True,
+    job_delay: float = 0.0,
+) -> Market:
+    """Full market scenario: reset, register fleet, run jobs, publish the
+    analyst report + Weave Leaderboard. Reused by the CLI and POST /sim/run."""
     init_weave()
     rng = random.Random(settings.rng_seed)
 
@@ -286,6 +357,7 @@ async def main(n_jobs: int, mock: bool, sabotage: bool) -> None:
         balance = settings.saboteur_balance if w.sabotage else None
         await registry.register_agent(w.id, w.id, w.model_tier, w.strategy.name, balance=balance)
         await matching.index_agent_skills(w.id, w.skill_text)
+    await events.emit("scenario_started", {"jobs": n_jobs, "agents": len(fleet)})
 
     for job in seed_jobs(n_jobs, rng):
         done, result = await market.run_job(job)
@@ -293,8 +365,10 @@ async def main(n_jobs: int, mock: bool, sabotage: bool) -> None:
             f"{done.id}  status={done.status:<9} winner={done.winner_id} "
             f"price={done.escrow_amount:.2f} score={result.score if result else None}"
         )
+        if job_delay:
+            await asyncio.sleep(job_delay)
 
-    await print_reports(market)
+    await _publish_report(market)
 
     if not mock:
         # reputation ranking as a Weave-native, eval-backed Leaderboard
@@ -308,6 +382,13 @@ async def main(n_jobs: int, mock: bool, sabotage: bool) -> None:
             [{"job_id": j.id, "spec": j.spec} for j, _ in market.job_log], dict(records)
         )
         print(f"\nWeave Leaderboard: {uri}")
+    await events.emit("scenario_finished", {"jobs": n_jobs})
+    return market
+
+
+async def main(n_jobs: int, mock: bool, sabotage: bool) -> None:
+    market = await run_scenario(n_jobs, mock, sabotage)
+    await print_reports(market)
 
 
 if __name__ == "__main__":
