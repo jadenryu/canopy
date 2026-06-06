@@ -23,6 +23,7 @@ const EVENT_TAB: Record<string, string> = {
   shock: "floor",
   bankruptcy: "floor",
   fork: "floor",
+  fraud_detected: "floor",
   report_ready: "deals",
   scenario_finished: "deals",
 };

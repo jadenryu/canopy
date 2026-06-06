@@ -34,6 +34,11 @@ export const EVENT_COLORS: Record<string, string> = {
   scenario_finished: "text-special font-bold",
   report_ready: "text-special",
   shock: "text-negative font-bold",
+  // reward-hacking police (judge passed, hidden holdout check failed)
+  audit_failed: "text-working",
+  fraud_detected: "text-negative font-bold",
+  // self-improvement loop (agent ingests its Weave score + rationale)
+  lesson_learned: "text-canopy",
 };
 
 // big moments get full-row emphasis in the EventFeed
@@ -43,4 +48,5 @@ export const MAJOR_EVENTS: Record<string, string> = {
   fork: "bg-positive/5",
   scenario_started: "bg-special/5",
   scenario_finished: "bg-special/5",
+  fraud_detected: "bg-negative/5",
 };

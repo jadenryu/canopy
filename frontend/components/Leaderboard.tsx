@@ -37,6 +37,9 @@ export function Leaderboard({ agents }: { agents: AgentRow[] }) {
                 {i === 0 && a.status !== "bankrupt" && (
                   <span className="text-working"> 👑</span>
                 )}
+                {(a.frauds ?? 0) > 0 && (
+                  <span title={`${a.frauds} audit conviction(s)`}> 🚨</span>
+                )}
               </span>
               <span className="rounded bg-surface-2 px-1 py-px text-[10px] text-ink-faint">
                 {a.strategy}

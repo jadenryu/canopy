@@ -34,6 +34,12 @@ function summarize(e: MarketEvent): string {
       return `${p.parent_id} forks → ${p.child_id}`;
     case "price_update":
       return `${p.category} h${p.hops ?? "?"} clears @ ${Number(p.price).toFixed(2)}`;
+    case "audit_failed":
+      return `${p.job_id}: judge ${Number(p.judge_score).toFixed(2)} but ${p.holdout} FAILED — ${p.agent_id} flagged`;
+    case "fraud_detected":
+      return `🚨 ${p.agent_id} convicted (${p.reason}) — rep −${Number(p.rep_slash).toFixed(2)}, clawback ${Number(p.clawback).toFixed(2)}`;
+    case "lesson_learned":
+      return `${p.agent_id} learns: ${p.lesson}`;
     default:
       return JSON.stringify(e.payload).slice(0, 80);
   }

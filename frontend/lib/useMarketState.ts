@@ -3,6 +3,15 @@
 import { useCoAgent } from "@copilotkit/react-core";
 import { useAgent } from "@copilotkit/react-core/v2";
 
+// A lesson an agent extracted from its own Weave score + rationale
+// (self-improvement loop; see documentation/police_and_learning_backend_plan.md).
+export type Lesson = {
+  job_id: string;
+  score: number;
+  lesson: string;
+  ts: number;
+};
+
 // Mirrors the backend's AG-UI STATE_SNAPSHOT payload (canopy/api/state.py).
 export type AgentRow = {
   id: string;
@@ -15,6 +24,8 @@ export type AgentRow = {
   jobs_won: number;
   jobs_failed: number;
   parent_id: string | null;
+  frauds?: number; // audit convictions (reward-hacking police)
+  lessons?: Lesson[]; // newest last, capped at 5 by the backend
 };
 
 export type BidRow = { agent_id: string; effective_bid: number };

@@ -74,7 +74,45 @@ export function AgentSheet({
             value={String(agent.jobs_failed)}
             tone={agent.jobs_failed > 0 ? "text-negative" : undefined}
           />
+          {(agent.frauds ?? 0) > 0 && (
+            <Stat
+              label="🚨 audit strikes"
+              value={String(agent.frauds)}
+              tone="text-negative"
+            />
+          )}
         </div>
+
+        {/* self-improvement loop: Weave score + rationale → behavior change */}
+        {(agent.lessons?.length ?? 0) > 0 && (
+          <div className="px-4 pb-2">
+            <div className="mb-1.5 text-[10px] uppercase tracking-wider text-ink-faint">
+              weave feedback → lessons learned
+            </div>
+            <div className="flex flex-col gap-1">
+              {[...(agent.lessons ?? [])].reverse().map((l) => (
+                <div
+                  key={`${l.job_id}-${l.ts}`}
+                  className="flex items-baseline gap-2 rounded-md border border-canopy/25 bg-canopy/5 px-2 py-1.5 text-[11px]"
+                >
+                  <span
+                    className={`shrink-0 rounded px-1 py-px text-[10px] tabular-nums ${
+                      l.score >= 0.7
+                        ? "bg-positive/15 text-positive"
+                        : "bg-negative/15 text-negative"
+                    }`}
+                  >
+                    {l.score.toFixed(2)}
+                  </span>
+                  <span className="leading-4 text-ink">{l.lesson}</span>
+                  <span className="ml-auto shrink-0 text-[9px] text-ink-faint">
+                    {l.job_id}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {[
           { title: "work history", list: worked },
