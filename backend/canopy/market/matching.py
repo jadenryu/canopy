@@ -48,7 +48,12 @@ async def get_index() -> AsyncSearchIndex:
 
 async def create_index(overwrite: bool = True) -> None:
     index = await get_index()
-    await index.create(overwrite=overwrite, drop=overwrite)
+    try:
+        await index.create(overwrite=overwrite, drop=overwrite)
+    except Exception:
+        # exists() said yes but the drop hit "Unknown Index name" — the index
+        # vanished between check and drop (shared Redis DB). Create fresh.
+        await index.create(overwrite=False)
 
 
 async def index_agent_skills(agent_id: str, skill_text: str) -> None:

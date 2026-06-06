@@ -17,6 +17,7 @@ Writes documentation/results.md with the headline table.
 """
 import argparse
 import asyncio
+import json
 import os
 import random
 import statistics
@@ -28,7 +29,7 @@ os.environ.setdefault("WEAVE_PARALLELISM", "1")  # market state evolves job-to-j
 import weave
 
 from canopy.agents.skills import GENERALIST_PROFILE
-from canopy.agents.strategies import Generalist
+from canopy.agents.strategies import Generalist, Lowballer
 from canopy.agents.worker import Worker
 from canopy.config import settings
 from canopy.eval.allocators import CONDITIONS, BaselineAllocator
@@ -101,14 +102,25 @@ def allocation_metrics(output: dict) -> dict:
 
 
 def eval_fleet(rng: random.Random) -> list[Worker]:
-    """Standard fleet + a premium-tier solo generalist (the B2 fixed agent;
-    it also bids in the market condition, where price keeps it honest)."""
+    """Standard fleet + a premium-tier solo generalist (the B2 fixed agent)
+    + TWO saboteurs. The plan (§3) is explicit: a homogeneous fleet lets
+    random/round-robin tie the market — heterogeneity including bad actors
+    is what the market's reputation routing is FOR. Baselines can't avoid
+    the saboteurs; the market freezes them out after a few rejections."""
     fleet = build_fleet(rng, mock=False, sabotage=False)
     prem = Worker(
         "worker-prem", strategy=Generalist(random.Random(rng.random())), model_tier="premium"
     )
     prem.skill_text = GENERALIST_PROFILE + " Premium tier: deeper reasoning."
     fleet.append(prem)
+    for i in range(2):
+        sab = Worker(
+            f"worker-slop{i}",
+            strategy=Lowballer(random.Random(rng.random())),
+            sabotage=True,
+        )
+        sab.skill_text = GENERALIST_PROFILE + " Always the lowest price."
+        fleet.append(sab)
     return fleet
 
 
@@ -121,7 +133,11 @@ async def prepare(condition: str, seed: int, warmup: int) -> dict:
     fleet = eval_fleet(rng)
     market = Market(fleet, mock=False, rng=rng)
     for w in fleet:
-        await registry.register_agent(w.id, w.id, w.model_tier, w.strategy.name)
+        # saboteurs start poor (3 failures = bankrupt). In the market
+        # condition they die during warm-up — the mechanism prices them out
+        # before the eval window. Static allocators keep hiring them forever.
+        balance = settings.saboteur_balance if w.sabotage else None
+        await registry.register_agent(w.id, w.id, w.model_tier, w.strategy.name, balance=balance)
         await matching.index_agent_skills(w.id, w.skill_text)
 
     desc: dict = {}
@@ -168,26 +184,47 @@ async def main(conditions: list[str], seeds: list[int], limit: int | None, warmu
         name="canopy-allocator-eval", dataset=rows, scorers=[allocation_metrics]
     )
 
-    # results[condition][metric] = [per-seed means]
+    # results[condition][metric] = [per-seed means]; checkpointed to JSON so
+    # a crash never loses completed condition runs (resume skips them)
+    checkpoint_path = RESULTS_PATH.with_name("eval_checkpoint.json")
+    checkpoint: dict = (
+        json.loads(checkpoint_path.read_text()) if checkpoint_path.exists() else {}
+    )
     results: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     desc_stats: dict = {}
     for condition in conditions:
         for seed in seeds:
-            print(f"\n=== {condition} / seed {seed} ===")
-            desc = await prepare(condition, seed, warmup)
-            if desc:
-                desc_stats[f"seed {seed}"] = desc
-            summary = await evaluation.evaluate(
-                AllocatorModel(condition=condition, seed=seed)
-            )
-            m = summary["allocation_metrics"]
-            quality = m["quality"]["mean"]
-            paid = m["paid"]["mean"]
+            key = f"{condition}/{seed}"
+            if key in checkpoint:
+                print(f"=== {key} (from checkpoint) ===")
+                m = checkpoint[key]
+            else:
+                print(f"\n=== {key} ===")
+                desc = await prepare(condition, seed, warmup)
+                if desc:
+                    desc_stats[f"seed {seed}"] = desc
+                summary = await evaluation.evaluate(
+                    AllocatorModel(condition=condition, seed=seed)
+                )
+                s = summary["allocation_metrics"]
+                m = {
+                    "quality": s["quality"]["mean"],
+                    "accuracy": s["accuracy"]["true_fraction"],
+                    "paid": s["paid"]["mean"],
+                    "rejected": s["rejected"]["true_fraction"],
+                }
+                checkpoint[key] = m
+                checkpoint_path.write_text(json.dumps(checkpoint, indent=1))
+            quality, paid = m["quality"], m["paid"]
             results[condition]["quality"].append(quality)
-            results[condition]["accuracy"].append(m["accuracy"]["true_fraction"])
+            results[condition]["accuracy"].append(m["accuracy"])
             results[condition]["paid"].append(paid)
             results[condition]["qpd"].append(quality / paid if paid > 0 else 0.0)
-            print(f"    quality={quality:.3f} paid/job={paid:.3f} qpd={quality/paid if paid else 0:.3f}")
+            print(
+                f"    quality={quality:.3f} accuracy={m['accuracy']:.2f} "
+                f"paid/job={paid:.3f} qpd={quality/paid if paid else 0:.3f}",
+                flush=True,
+            )
 
     # ---- report -------------------------------------------------------------
     lines = [

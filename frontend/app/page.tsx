@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ApprovalCard, ControlPanel } from "@/components/ControlPanel";
 import { DeclarativePanel } from "@/components/DeclarativePanel";
 import { EventFeed } from "@/components/EventFeed";
 import { HiringGraph } from "@/components/HiringGraph";
+import { AgentSheet, JobSheet } from "@/components/Inspector";
 import { Leaderboard } from "@/components/Leaderboard";
+import { MarketGraph } from "@/components/MarketGraph";
 import { OrderBook } from "@/components/OrderBook";
 import { PriceChart } from "@/components/PriceChart";
 import { ReportFrame } from "@/components/ReportFrame";
 import { Wallets } from "@/components/Wallets";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { runScenario, useMarketState } from "@/lib/useMarketState";
 
 // One stat in the ticker strip under the header.
@@ -24,10 +27,13 @@ function Tick({ label, value, tone }: { label: string; value: string | number; t
 }
 
 // The trading floor: a pure projection of backend state over ONE AG-UI
-// connection, demonstrating all three gen-UI patterns (see panel badges).
+// connection. The market graph is the hero; everything is click-to-inspect;
+// the three gen-UI patterns are labeled on their panels.
 export default function Home() {
   const { state, start, running } = useMarketState();
   const [launching, setLaunching] = useState(false);
+  const [agentId, setAgentId] = useState<string | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
   const watched = useRef(false);
 
   // open the live watch stream once on mount
@@ -49,20 +55,35 @@ export default function Home() {
     }
   };
 
-  // ticker stats — all derived from state already on this page
   const agents = state?.agents ?? [];
   const jobs = state?.jobs ?? [];
   const settledJobs = jobs.filter((j) => j.status === "settled");
   const volume = settledJobs.reduce((s, j) => s + j.price, 0);
   const bankrupt = agents.filter((a) => a.status === "bankrupt").length;
+  const executing = useMemo(
+    () =>
+      new Set(
+        jobs
+          .filter((j) => j.status === "executing" && j.winner_id)
+          .map((j) => j.winner_id as string)
+      ),
+    [jobs]
+  );
+
+  const selectAgent = (id: string) => {
+    setJobId(null);
+    setAgentId(id);
+  };
+  const selectJob = (id: string) => {
+    setAgentId(null);
+    setJobId(id);
+  };
 
   return (
     <main className="flex min-h-screen flex-col gap-3 bg-bg p-4 font-mono text-ink">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-lg font-bold uppercase tracking-tight">
-            🌳 Canopy
-          </h1>
+          <h1 className="text-lg font-bold uppercase tracking-tight">🌳 Canopy</h1>
           <span className="text-xs text-ink-faint">
             self-organizing agent labor market — live floor
           </span>
@@ -118,26 +139,45 @@ export default function Home() {
         <Tick label="reserve" value={(state?.reserve_price ?? 0.5).toFixed(2)} />
       </div>
 
+      {/* HERO — the economy as a living network + its pulse */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        {/* hero row */}
         <div className="lg:col-span-2">
-          <PriceChart prices={state?.prices ?? {}} />
+          <MarketGraph
+            agents={agents}
+            jobs={jobs}
+            executing={executing}
+            onSelectAgent={selectAgent}
+            onSelectJob={selectJob}
+          />
         </div>
         <EventFeed events={state?.events ?? []} />
-
-        {/* data rows */}
-        <OrderBook jobs={state?.jobs ?? []} />
-        <Leaderboard agents={state?.agents ?? []} />
-        <Wallets agents={state?.agents ?? []} />
-        <HiringGraph jobs={state?.jobs ?? []} />
-        <DeclarativePanel spec={state?.job_detail ?? null} />
-        <ReportFrame html={state?.report_html ?? null} />
-
-        {/* human controls — full width strip */}
-        <div className="lg:col-span-3">
-          <ControlPanel pending={state?.pending_action ?? null} />
-        </div>
       </div>
+
+      {/* the floor, organized — not a wall of panels */}
+      <Tabs defaultValue="floor">
+        <TabsList className="border border-edge bg-surface font-mono">
+          <TabsTrigger value="floor" className="text-xs">
+            trading floor
+          </TabsTrigger>
+          <TabsTrigger value="deals" className="text-xs">
+            deals & reports
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="floor" className="mt-2 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <PriceChart prices={state?.prices ?? {}} />
+          <OrderBook jobs={jobs} />
+          <Leaderboard agents={agents} />
+          <Wallets agents={agents} />
+        </TabsContent>
+        <TabsContent value="deals" className="mt-2 grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <HiringGraph jobs={jobs} />
+          <DeclarativePanel spec={state?.job_detail ?? null} />
+          <ReportFrame html={state?.report_html ?? null} />
+        </TabsContent>
+      </Tabs>
+
+      {/* human controls — full width strip */}
+      <ControlPanel pending={state?.pending_action ?? null} />
 
       <footer className="flex flex-wrap items-center gap-2 text-[10px] text-ink-faint">
         <span className="text-ink-faint">gen-UI spectrum, one AG-UI connection:</span>
@@ -154,6 +194,19 @@ export default function Home() {
       </footer>
 
       <ApprovalCard pending={state?.pending_action ?? null} />
+      <AgentSheet
+        agent={agents.find((a) => a.id === agentId) ?? null}
+        jobs={jobs}
+        open={agentId !== null}
+        onClose={() => setAgentId(null)}
+        onSelectJob={selectJob}
+      />
+      <JobSheet
+        job={jobs.find((j) => j.id === jobId) ?? null}
+        open={jobId !== null}
+        onClose={() => setJobId(null)}
+        onSelectAgent={selectAgent}
+      />
     </main>
   );
 }

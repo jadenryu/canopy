@@ -51,12 +51,13 @@ class BaselineAllocator:
         self.fleet = fleet
         self.rng = rng
         self._rr = 0
-        # fixed agents for the single-agent baselines
+        # fixed agents for the single-agent baselines — a chosen fixed agent
+        # is never a saboteur (you'd vet the one agent you hire) nor a manager
         self.cheap = next(
-            w for w in fleet if w.model_tier == "cheap" and not w.is_manager
+            w for w in fleet if w.model_tier == "cheap" and not w.is_manager and not w.sabotage
         )
         self.premium = next(
-            w for w in fleet if w.model_tier == "premium" and not w.is_manager
+            w for w in fleet if w.model_tier == "premium" and not w.is_manager and not w.sabotage
         )
 
     @weave.op

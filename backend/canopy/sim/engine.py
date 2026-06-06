@@ -35,6 +35,7 @@ from canopy.market import auction, events, ledger, lifecycle, matching, order_bo
 from canopy.market.ledger import LEDGER_STREAM
 from canopy.redis_client import get_redis
 from canopy.scoring.leaderboard import publish_reputation_leaderboard
+from canopy.scoring.monitors import activate_guardrail_monitor
 from canopy.scoring.scorers import JobQualityScorer, SubmissionGuardrail
 from canopy.weave_setup import init_weave
 
@@ -360,6 +361,7 @@ async def run_scenario(
     analyst report + Weave Leaderboard. Reused by the CLI and POST /sim/run."""
     global CURRENT_MARKET
     init_weave()
+    activate_guardrail_monitor()  # online evals over live traffic (best-effort)
     rng = random.Random(settings.rng_seed)
 
     r = get_redis()

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useState } from "react";
 
 import { AgentRow } from "@/lib/useMarketState";
 import { Empty } from "./Empty";
@@ -12,19 +12,38 @@ function barTone(a: AgentRow): string {
   return "bg-gradient-to-r from-amber-700 to-amber-400";
 }
 
+type Snapshot = {
+  key: string;
+  balances: Map<string, number>;
+  deltas: Map<string, number>;
+};
+
 // Controlled gen-UI: live balances. Bankrupt = the bar bled out.
 // Rows flash and show a Δ when money moves — this is where pay lands.
 export function Wallets({ agents }: { agents: AgentRow[] }) {
-  // previous balances, kept across renders so we can show deltas
-  const prevRef = useRef<Map<string, number>>(new Map());
-  const deltas = new Map<string, number>();
-  for (const a of agents) {
-    const prev = prevRef.current.get(a.id);
-    if (prev !== undefined) deltas.set(a.id, a.balance - prev);
+  // previous balances → per-agent deltas, via React's render-phase
+  // "derive state from previous props" pattern (no refs read in render).
+  const key = agents.map((a) => `${a.id}:${a.balance.toFixed(2)}`).join("|");
+  const [snap, setSnap] = useState<Snapshot>({
+    key,
+    balances: new Map(),
+    deltas: new Map(),
+  });
+  if (snap.key !== key) {
+    const deltas = new Map<string, number>();
+    for (const a of agents) {
+      const prev = snap.balances.get(a.id);
+      if (prev !== undefined && Math.abs(a.balance - prev) > 0.005) {
+        deltas.set(a.id, a.balance - prev);
+      }
+    }
+    setSnap({
+      key,
+      balances: new Map(agents.map((a) => [a.id, a.balance])),
+      deltas,
+    });
   }
-  useEffect(() => {
-    prevRef.current = new Map(agents.map((a) => [a.id, a.balance]));
-  }, [agents]);
+  const deltas = snap.deltas;
 
   const max = Math.max(100, ...agents.map((a) => a.balance));
   const sorted = [...agents].sort((a, b) => b.balance - a.balance);

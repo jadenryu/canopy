@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /* Canopy design tokens — "dark terminal, emerald signal".
    See documentation/design_refresh_plan.md §3. */
@@ -63,6 +64,34 @@
       opacity: 0.35;
     }
   }
+
+  /* marching dashes on live hire edges in the market graph */
+  --animate-edge-flow: edge-flow 0.6s linear infinite;
+  @keyframes edge-flow {
+    to {
+      stroke-dashoffset: -10;
+    }
+  }
+}
+
+/* shadcn semantic tokens → canopy palette (Sheet/Tabs/Tooltip primitives
+   pick up the terminal look without their own theme) */
+@theme inline {
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-ink);
+  --color-muted: var(--color-surface-2);
+  --color-muted-foreground: var(--color-ink-dim);
+  --color-border: var(--color-edge);
+  --color-input: var(--color-edge);
+  --color-ring: var(--color-canopy);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-ink);
+  --color-primary: var(--color-canopy);
+  --color-primary-foreground: #000000;
+  --color-secondary: var(--color-surface-2);
+  --color-secondary-foreground: var(--color-ink);
+  --color-accent: var(--color-surface-2);
+  --color-accent-foreground: var(--color-ink);
 }
 
 body {
