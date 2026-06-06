@@ -1,0 +1,7 @@
+# Local fallback only — production/demo uses Redis Cloud (REDIS_URL in .env).
+services:
+  redis:
+    image: redis/redis-stack:latest
+    ports:
+      - "6379:6379"   # redis
+      - "8001:8001"   # RedisInsight
