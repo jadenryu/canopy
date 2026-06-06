@@ -1,31 +1,15 @@
 "use client";
 
+import { EVENT_COLORS, MAJOR_EVENTS } from "@/lib/status";
 import { MarketEvent } from "@/lib/useMarketState";
+import { Empty } from "./Empty";
 import { Panel } from "./Panel";
 
-const TYPE_COLORS: Record<string, string> = {
-  job_posted: "text-sky-400",
-  bid_placed: "text-neutral-400",
-  awarded: "text-amber-400",
-  executing: "text-amber-300",
-  scored: "text-violet-400",
-  settled: "text-green-500",
-  rejected: "text-red-500",
-  failed: "text-red-400",
-  penalty: "text-red-400",
-  bankruptcy: "text-red-600 font-bold",
-  fork: "text-emerald-400 font-bold",
-  reputation_update: "text-neutral-500",
-  price_update: "text-green-400",
-  escrow_hold: "text-neutral-500",
-  escrow_release: "text-neutral-500",
-  escrow_refund: "text-neutral-500",
-  agent_registered: "text-sky-300",
-  scenario_started: "text-fuchsia-400 font-bold",
-  scenario_finished: "text-fuchsia-400 font-bold",
-  report_ready: "text-fuchsia-400",
-  shock: "text-red-500 font-bold",
-};
+const MAX_ROWS = 80; // a feed, not an archive — keep DOM small under burst load
+
+function fmtTime(ts: number): string {
+  return new Date(ts * 1000).toLocaleTimeString("en-GB", { hour12: false });
+}
 
 function summarize(e: MarketEvent): string {
   const p = e.payload as Record<string, string | number>;
@@ -57,22 +41,40 @@ function summarize(e: MarketEvent): string {
 
 // Controlled gen-UI: the market's pulse, one line per event.
 export function EventFeed({ events }: { events: MarketEvent[] }) {
-  const recent = [...events].reverse();
+  // newest first; key rows by their position in the append-only source array
+  // so existing rows keep identity (and don't re-animate) when new ones land.
+  const recent = events.slice(-MAX_ROWS).reverse();
+  const total = events.length;
+
   return (
-    <Panel title="Event feed" pattern="controlled" className="h-72">
-      <div className="flex flex-col gap-0.5 text-[11px] leading-4">
-        {recent.map((e, i) => (
-          <div key={`${e.ts}-${i}`} className="flex gap-2">
-            <span className={`w-36 shrink-0 ${TYPE_COLORS[e.type] ?? "text-neutral-400"}`}>
-              {e.type}
-            </span>
-            <span className="truncate text-neutral-400">{summarize(e)}</span>
-          </div>
-        ))}
-        {recent.length === 0 && (
-          <div className="py-4 text-center text-neutral-600">quiet…</div>
-        )}
-      </div>
+    <Panel title="Event feed" pattern="controlled" accent className="h-80">
+      {recent.length === 0 ? (
+        <Empty glyph="⊘" hint="events stream in once the market opens">
+          quiet…
+        </Empty>
+      ) : (
+        <div className="flex flex-col gap-0.5 text-[11px] leading-4">
+          {recent.map((e, i) => {
+            const color = EVENT_COLORS[e.type] ?? "text-ink-dim";
+            return (
+              <div
+                key={total - 1 - i}
+                className={`flex animate-slide-in items-baseline gap-2 border-l-2 border-current py-px pl-2 ${color} ${
+                  MAJOR_EVENTS[e.type] ?? ""
+                }`}
+              >
+                <span className="w-13 shrink-0 text-[10px] font-normal text-ink-faint">
+                  {fmtTime(e.ts)}
+                </span>
+                <span className="w-32 shrink-0 truncate">{e.type}</span>
+                <span className="truncate font-normal text-ink-dim">
+                  {summarize(e)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </Panel>
   );
 }
