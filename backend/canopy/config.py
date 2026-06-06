@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     manager_min_hops: int = 3  # managers only bid on jobs this complex
     failure_penalty: float = 10.0  # balance slash on rejection / failed settle
     saboteur_balance: float = 25.0  # demo saboteur starts poor → fast bankruptcy
+    busy_surge: float = 1.6  # busy agents bid at a premium (capacity pricing)
+    spike_stagger: float = 2.5  # seconds between demand-spike job posts
 
     # --- worker cost control ---
     worker_max_tokens: int = 600

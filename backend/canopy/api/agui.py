@@ -43,6 +43,8 @@ DELTA_KEYS = (
     "ledger_entries",
     "job_detail",
     "report_html",
+    "pending_action",
+    "reserve_price",
 )
 
 

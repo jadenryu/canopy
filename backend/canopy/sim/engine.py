@@ -57,6 +57,9 @@ MARKET_KEY_PATTERNS = (
 GUARDRAIL = SubmissionGuardrail()
 REFEREE = JobQualityScorer()
 
+# the live market session — control endpoints post jobs/shocks into it
+CURRENT_MARKET: "Market | None" = None
+
 
 def _match_text(job: Job) -> str:
     """What gets embedded for matching: the spec, plus an explicit complexity
@@ -119,8 +122,13 @@ class Market:
             await order_book.save_job(job)
             await events.emit("executing", {"job_id": job.id, "agent_id": job.winner_id})
             winner = self.workers[job.winner_id]
-            # .call() keeps the Call object so Scorer verdicts attach to the trace
-            result, exec_call = await winner.execute_job.call(winner, job)
+            # busy → surge pricing on concurrent bids (capacity economics)
+            winner.busy = True
+            try:
+                # .call() keeps the Call object so Scorer verdicts attach to the trace
+                result, exec_call = await winner.execute_job.call(winner, job)
+            finally:
+                winner.busy = False
 
             # solo workers burn model cost per hop; a manager's costs are the
             # real escrow payments to its subcontractors (already debited)
@@ -342,6 +350,7 @@ async def run_scenario(
 ) -> Market:
     """Full market scenario: reset, register fleet, run jobs, publish the
     analyst report + Weave Leaderboard. Reused by the CLI and POST /sim/run."""
+    global CURRENT_MARKET
     init_weave()
     rng = random.Random(settings.rng_seed)
 
@@ -353,6 +362,7 @@ async def run_scenario(
     await registry.register_human()
     fleet = build_fleet(rng, mock, sabotage)
     market = Market(fleet, mock, rng)
+    CURRENT_MARKET = market  # control actions target the live session
     for w in fleet:
         balance = settings.saboteur_balance if w.sabotage else None
         await registry.register_agent(w.id, w.id, w.model_tier, w.strategy.name, balance=balance)
@@ -384,6 +394,25 @@ async def run_scenario(
         print(f"\nWeave Leaderboard: {uri}")
     await events.emit("scenario_finished", {"jobs": n_jobs})
     return market
+
+
+async def ensure_market() -> Market:
+    """A live fleet for HITL actions even before any scenario has run
+    (warm start: register the standard fleet, run no jobs)."""
+    global CURRENT_MARKET
+    if CURRENT_MARKET is None:
+        init_weave()
+        rng = random.Random(settings.rng_seed)
+        await reset_market()
+        await matching.create_index()
+        await registry.register_human()
+        fleet = build_fleet(rng, mock=False, sabotage=False)
+        CURRENT_MARKET = Market(fleet, mock=False, rng=rng)
+        for w in fleet:
+            await registry.register_agent(w.id, w.id, w.model_tier, w.strategy.name)
+            await matching.index_agent_skills(w.id, w.skill_text)
+        await events.emit("scenario_started", {"jobs": 0, "agents": len(fleet), "warm_start": True})
+    return CURRENT_MARKET
 
 
 async def main(n_jobs: int, mock: bool, sabotage: bool) -> None:

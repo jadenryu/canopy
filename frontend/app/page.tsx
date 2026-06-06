@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { ApprovalCard, ControlPanel } from "@/components/ControlPanel";
 import { DeclarativePanel } from "@/components/DeclarativePanel";
 import { EventFeed } from "@/components/EventFeed";
 import { HiringGraph } from "@/components/HiringGraph";
@@ -85,14 +86,18 @@ export default function Home() {
         <EventFeed events={state?.events ?? []} />
         <DeclarativePanel spec={state?.job_detail ?? null} />
         <ReportFrame html={state?.report_html ?? null} />
-        <section className="flex h-72 flex-col justify-center gap-2 rounded-lg border border-dashed border-neutral-800 p-4 text-xs text-neutral-500">
-          <p className="font-bold text-neutral-400">gen-UI spectrum, one AG-UI connection:</p>
-          <p><span className="text-sky-400">controlled</span> — fixed widgets (order book, chart, leaderboard, wallets, graph, feed); the market only feeds them data.</p>
-          <p><span className="text-amber-400">declarative</span> — the bid-comparison panel renders a structured UI spec streamed by the backend.</p>
-          <p><span className="text-fuchsia-400">open-ended</span> — the analyst agent draws arbitrary HTML/SVG, sandboxed in an iframe.</p>
-          <p className="pt-2 text-neutral-600">phase 5 adds the control panel: post jobs, central-bank actions, and the shock.</p>
-        </section>
+        <ControlPanel pending={state?.pending_action ?? null} />
       </div>
+
+      <footer className="text-[10px] text-neutral-600">
+        gen-UI spectrum on one AG-UI connection —{" "}
+        <span className="text-sky-400">controlled</span>: fixed widgets ·{" "}
+        <span className="text-amber-400">declarative</span>: streamed UI spec ·{" "}
+        <span className="text-fuchsia-400">open-ended</span>: agent-drawn HTML in a
+        sandboxed iframe · high-impact actions gated by AG-UI HITL approval
+      </footer>
+
+      <ApprovalCard pending={state?.pending_action ?? null} />
     </main>
   );
 }

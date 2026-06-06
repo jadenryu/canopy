@@ -32,6 +32,7 @@ class Agent:
         self.id = agent_id
         self.strategy = strategy or Generalist(rng or random.Random(settings.rng_seed))
         self.model_tier = model_tier
+        self.busy = False  # executing a job right now → surge pricing
 
     @property
     def is_manager(self) -> bool:
@@ -59,6 +60,10 @@ class Agent:
         )
         if price is None:
             return None
+        if self.busy:
+            # capacity is priced, not blocked: a loaded agent quotes overtime.
+            # this is what makes demand spikes visibly move the market.
+            price *= settings.busy_surge
         price = min(max(price, settings.reserve_price), job.bounty_cap)
         reputation = await registry.get_reputation(self.id)
         return Bid(

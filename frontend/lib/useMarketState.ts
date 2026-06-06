@@ -56,6 +56,14 @@ export type UISpec = {
   sections: SpecSection[];
 };
 
+// HITL: a high-impact action waiting for human approval.
+export type PendingAction = {
+  id: string;
+  kind: string;
+  label: string;
+  params: Record<string, unknown>;
+};
+
 export type MarketState = {
   market: string;
   redis_connected: boolean;
@@ -66,6 +74,8 @@ export type MarketState = {
   ledger_entries: number;
   job_detail: UISpec | null;
   report_html: string | null;
+  pending_action: PendingAction | null;
+  reserve_price: number;
 };
 
 const INITIAL: MarketState = {
@@ -78,6 +88,8 @@ const INITIAL: MarketState = {
   ledger_entries: 0,
   job_detail: null,
   report_html: null,
+  pending_action: null,
+  reserve_price: 0.5,
 };
 
 export function useMarketState() {
@@ -111,3 +123,32 @@ export async function runScenario(opts?: { jobs?: number; mock?: boolean }) {
   });
   return res.json();
 }
+
+// --- HITL ControlPanel calls -------------------------------------------------
+
+async function post(path: string, body: unknown) {
+  const res = await fetch(`${BACKEND}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText);
+  return res.json();
+}
+
+export const control = {
+  postJob: (spec: string, category: string, bountyCap: number, complexJob: boolean) =>
+    post("/control/post_job", {
+      spec,
+      category,
+      bounty_cap: bountyCap,
+      complex_job: complexJob,
+    }),
+  demandSpike: (category: string | null, jobs: number) =>
+    post("/control/demand_spike", { category, jobs }),
+  setReserve: (price: number) => post("/control/reserve", { price }),
+  requestAction: (kind: "kill_top_agent" | "inject_liquidity", amount?: number) =>
+    post("/control/request_action", { kind, amount: amount ?? 50 }),
+  approve: (actionId: string, approve: boolean) =>
+    post("/control/approve", { action_id: actionId, approve }),
+};

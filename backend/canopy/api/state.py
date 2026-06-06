@@ -7,6 +7,7 @@ Stream, prices ZSETs, the leaderboard ZSET.
 """
 import json
 
+from canopy.config import settings
 from canopy.market.events import EVENTS_STREAM
 from canopy.market.ledger import LEDGER_STREAM
 from canopy.redis_client import get_redis
@@ -15,6 +16,7 @@ EVENTS_TAIL = 60  # how many recent events the feed shows
 
 REPORT_KEY = "market:report"  # analyst-generated HTML (open-ended gen-UI)
 JOB_DETAIL_KEY = "market:job_detail"  # structured UI spec (declarative gen-UI)
+PENDING_ACTION_KEY = "market:pending_action"  # HITL approval slot
 
 
 async def market_snapshot() -> dict:
@@ -90,6 +92,7 @@ async def market_snapshot() -> dict:
     ledger_len = await r.xlen(LEDGER_STREAM)
     report_html = await r.get(REPORT_KEY)
     job_detail_raw = await r.get(JOB_DETAIL_KEY)
+    pending_raw = await r.get(PENDING_ACTION_KEY)
 
     return {
         "market": "canopy",
@@ -103,4 +106,7 @@ async def market_snapshot() -> dict:
         "job_detail": json.loads(job_detail_raw) if job_detail_raw else None,
         # open-ended gen-UI: agent-authored HTML for the sandboxed iframe
         "report_html": report_html,
+        # HITL: high-impact action awaiting human approval (None = nothing)
+        "pending_action": json.loads(pending_raw) if pending_raw else None,
+        "reserve_price": settings.reserve_price,
     }
