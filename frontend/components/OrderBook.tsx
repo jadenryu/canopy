@@ -1,56 +1,65 @@
 "use client";
 
+import { STATUS } from "@/lib/status";
 import { JobRow } from "@/lib/useMarketState";
+import { Empty } from "./Empty";
 import { Panel } from "./Panel";
-
-const STATUS_COLORS: Record<string, string> = {
-  open: "text-sky-400",
-  awarded: "text-amber-400",
-  executing: "text-amber-300",
-  verifying: "text-violet-400",
-  settled: "text-green-500",
-  rejected: "text-red-500",
-  failed: "text-red-400",
-};
 
 // Controlled gen-UI: a fixed widget; the market only feeds it data.
 export function OrderBook({ jobs }: { jobs: JobRow[] }) {
   const recent = [...jobs].reverse().slice(0, 24);
   return (
     <Panel title="Order book" pattern="controlled" className="h-72">
-      <table className="w-full text-left text-xs">
-        <thead className="text-neutral-500">
-          <tr>
-            <th className="pb-1 pr-2">job</th>
-            <th className="pb-1 pr-2">category</th>
-            <th className="pb-1 pr-2">bids</th>
-            <th className="pb-1 pr-2">winner</th>
-            <th className="pb-1 pr-2 text-right">price</th>
-            <th className="pb-1">status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {recent.map((j) => (
-            <tr key={j.id} className="border-t border-neutral-900">
-              <td className="py-1 pr-2 text-neutral-400">{j.id}</td>
-              <td className="py-1 pr-2">{j.category}{j.hops >= 3 ? " ★" : ""}</td>
-              <td className="py-1 pr-2">{j.bids.length}</td>
-              <td className="py-1 pr-2">{j.winner_id ?? "—"}</td>
-              <td className="py-1 pr-2 text-right">
-                {j.price ? j.price.toFixed(2) : "—"}
-              </td>
-              <td className={`py-1 ${STATUS_COLORS[j.status] ?? ""}`}>{j.status}</td>
+      {recent.length === 0 ? (
+        <Empty glyph="≡" hint="run a scenario ▶">
+          no jobs yet
+        </Empty>
+      ) : (
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="text-[10px] uppercase tracking-wider text-ink-faint">
+              <th className="pb-1 pr-2 font-medium">job</th>
+              <th className="pb-1 pr-2 font-medium">category</th>
+              <th className="pb-1 pr-2 font-medium">bids</th>
+              <th className="pb-1 pr-2 font-medium">winner</th>
+              <th className="pb-1 pr-2 text-right font-medium">price</th>
+              <th className="pb-1 font-medium">status</th>
             </tr>
-          ))}
-          {recent.length === 0 && (
-            <tr>
-              <td colSpan={6} className="py-4 text-center text-neutral-600">
-                no jobs yet — run a scenario
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {recent.map((j) => {
+              const s = STATUS[j.status];
+              return (
+                <tr
+                  key={j.id}
+                  className="animate-flash-row border-t border-edge/60 transition-colors hover:bg-surface-2/60"
+                >
+                  <td className="py-1 pr-2 text-ink-dim">{j.id}</td>
+                  <td className="py-1 pr-2">
+                    {j.category}
+                    {j.hops >= 3 && <span className="text-working"> ★</span>}
+                  </td>
+                  <td className="py-1 pr-2 text-ink-dim">{j.bids.length}</td>
+                  <td className="py-1 pr-2">{j.winner_id ?? "—"}</td>
+                  <td className="py-1 pr-2 text-right tabular-nums text-ink">
+                    {j.price ? j.price.toFixed(2) : "—"}
+                  </td>
+                  <td className="py-1">
+                    <span className={`flex items-center gap-1.5 ${s?.text ?? ""}`}>
+                      <span
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                          s?.dot ?? "bg-edge-2"
+                        } ${j.status === "executing" ? "animate-pulse-dot" : ""}`}
+                      />
+                      {j.status}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </Panel>
   );
 }
