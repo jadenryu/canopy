@@ -13,9 +13,11 @@ import { Panel } from "./Panel";
 export function HiringGraph({
   jobs,
   agents,
+  onSelectJob,
 }: {
   jobs: JobRow[];
   agents: AgentRow[];
+  onSelectJob?: (id: string) => void;
 }) {
   const label = useMemo(() => {
     const m = new Map(agents.map((a) => [a.id, a.label || a.id]));
@@ -42,9 +44,10 @@ export function HiringGraph({
     return (
       <div key={job.id}>
         <div
-          className={`flex items-baseline gap-2 py-1 ${
+          onClick={() => onSelectJob?.(job.id)}
+          className={`flex items-baseline gap-2 rounded py-1 ${
             depth > 0 ? "text-[11px]" : "text-xs"
-          }`}
+          } ${onSelectJob ? "cursor-pointer hover:bg-surface-2/60" : ""}`}
         >
           <span
             className={`h-1.5 w-1.5 shrink-0 translate-y-px rounded-full ${s?.dot ?? "bg-edge-2"} ${
@@ -84,7 +87,7 @@ export function HiringGraph({
   return (
     <Panel
       title="Subcontract chains"
-      subtitle="recursive hiring — a winner becomes a client"
+      subtitle="recursive hiring — a winner becomes a client · click any deal"
       pattern="controlled"
       className="h-72"
     >

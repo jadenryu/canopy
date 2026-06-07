@@ -6,12 +6,19 @@ import { Empty } from "./Empty";
 import { Panel } from "./Panel";
 
 // Controlled gen-UI: a fixed widget; the market only feeds it data.
-export function OrderBook({ jobs }: { jobs: JobRow[] }) {
+// Rows click through to the full job dossier (spec, bid book, outcome).
+export function OrderBook({
+  jobs,
+  onSelectJob,
+}: {
+  jobs: JobRow[];
+  onSelectJob?: (id: string) => void;
+}) {
   const recent = [...jobs].reverse().slice(0, 24);
   return (
     <Panel
       title="Order history"
-      subtitle="every job this session, newest first"
+      subtitle="every job this session, newest first · click a row for the full dossier"
       pattern="controlled"
       className="h-72"
     >
@@ -37,7 +44,10 @@ export function OrderBook({ jobs }: { jobs: JobRow[] }) {
               return (
                 <tr
                   key={j.id}
-                  className="animate-flash-row border-t border-edge/60 transition-colors hover:bg-surface-2/60"
+                  onClick={() => onSelectJob?.(j.id)}
+                  className={`animate-flash-row border-t border-edge/60 transition-colors hover:bg-surface-2/60 ${
+                    onSelectJob ? "cursor-pointer" : ""
+                  }`}
                 >
                   <td className="py-1 pr-2 text-ink-dim">{j.id}</td>
                   <td className="py-1 pr-2">

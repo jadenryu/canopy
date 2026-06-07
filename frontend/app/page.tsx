@@ -13,6 +13,7 @@ import { Leaderboard } from "@/components/Leaderboard";
 import { MarketPipeline } from "@/components/MarketPipeline";
 import { OrderBook } from "@/components/OrderBook";
 import { PriceCards } from "@/components/PriceCards";
+import { PriceSheet } from "@/components/PriceSheet";
 import { ReportFrame } from "@/components/ReportFrame";
 import { Wallets } from "@/components/Wallets";
 import {
@@ -31,18 +32,21 @@ const EVENT_TAB: Record<string, string> = {
   scenario_finished: "deals",
 };
 
-// One headline statistic in the KPI strip.
+// One headline statistic in the KPI strip. `info` shows on hover — the
+// technical definition of the metric.
 function Kpi({
   label,
   value,
   tone,
+  info,
 }: {
   label: string;
   value: string | number;
   tone?: string;
+  info?: string;
 }) {
   return (
-    <div className="flex flex-col gap-0.5 px-5 first:pl-1">
+    <div className="flex flex-col gap-0.5 px-5 first:pl-1" title={info}>
       <span className="text-[11px] text-ink-faint">{label}</span>
       <span className={`num text-xl font-medium ${tone ?? "text-ink"}`}>{value}</span>
     </div>
@@ -56,6 +60,7 @@ export default function Home() {
   const { state } = useMarketState();
   const [agentId, setAgentId] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [priceKey, setPriceKey] = useState<string | null>(null);
   const [tab, setTab] = useState("floor");
   const [flash, setFlash] = useState<Set<string>>(new Set());
   const seenEvents = useRef(0);
@@ -153,18 +158,34 @@ export default function Home() {
 
       {/* KPI strip */}
       <div className="flex flex-wrap items-center divide-x divide-edge">
-        <Kpi label="Jobs settled" value={settledJobs.length} />
+        <Kpi
+          label="Jobs settled"
+          value={settledJobs.length}
+          info="Jobs that passed the Weave referee and paid out of escrow"
+        />
         <button onClick={() => setEarningsOpen(true)} className="text-left">
           <Kpi label="Volume — click to break down" value={volume.toFixed(2)} tone="text-canopy" />
         </button>
-        <Kpi label="Active agents" value={active} />
+        <Kpi
+          label="Active agents"
+          value={active}
+          info="Registered, solvent agents currently able to bid"
+        />
         <Kpi
           label="Bankruptcies"
           value={bankrupt}
           tone={bankrupt > 0 ? "text-negative" : undefined}
         />
-        <Kpi label="Ledger entries" value={state?.ledger_entries ?? 0} />
-        <Kpi label="Reserve price" value={(state?.reserve_price ?? 0.5).toFixed(2)} />
+        <Kpi
+          label="Ledger entries"
+          value={state?.ledger_entries ?? 0}
+          info="Append-only transaction log on a Redis Stream — every escrow hold, release, refund and fine"
+        />
+        <Kpi
+          label="Reserve price"
+          value={(state?.reserve_price ?? 0.5).toFixed(2)}
+          info="The minimum bid the auction accepts — a config knob that prevents race-to-zero pricing"
+        />
       </div>
 
       {/* centerpiece — the flow board + the live activity stream */}
@@ -196,17 +217,17 @@ export default function Home() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="floor" className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <PriceCards prices={state?.prices ?? {}} />
+          <PriceCards prices={state?.prices ?? {}} onSelectCategory={setPriceKey} />
           <BidLeaderboard agents={agents} jobs={jobs} onSelectAgent={selectAgent} />
           <Leaderboard agents={agents} onSelectAgent={selectAgent} />
-          <Wallets agents={agents} />
+          <Wallets agents={agents} onSelectAgent={selectAgent} />
           <FloorChat messages={state?.chat ?? []} onSelectAgent={selectAgent} />
           <div className="lg:col-span-2">
-            <OrderBook jobs={jobs} />
+            <OrderBook jobs={jobs} onSelectJob={selectJob} />
           </div>
         </TabsContent>
         <TabsContent value="deals" className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <HiringGraph jobs={jobs} agents={agents} />
+          <HiringGraph jobs={jobs} agents={agents} onSelectJob={selectJob} />
           <DeclarativePanel spec={state?.job_detail ?? null} />
           <ReportFrame html={state?.report_html ?? null} />
         </TabsContent>
@@ -249,6 +270,17 @@ export default function Home() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <PriceSheet
+        priceKey={priceKey}
+        series={priceKey ? (state?.prices?.[priceKey] ?? []) : []}
+        jobs={jobs}
+        onClose={() => setPriceKey(null)}
+        onSelectJob={(id) => {
+          setPriceKey(null);
+          selectJob(id);
+        }}
+      />
 
       <ApprovalCard pending={state?.pending_action ?? null} />
       <AgentSheet

@@ -15,7 +15,15 @@ function parseKey(key: string): { label: string; hops: number } {
 // multiples beat a tangled multi-line chart: each market reads on its
 // own, the trend (settling = competition working) is obvious, and the
 // last/Δ numbers are right there.
-function Card({ name, series }: { name: string; series: number[] }) {
+function Card({
+  name,
+  series,
+  onSelect,
+}: {
+  name: string;
+  series: number[];
+  onSelect?: (key: string) => void;
+}) {
   const { label, hops } = parseKey(name);
   const data = series.map((v, i) => ({ i, v }));
   const last = series[series.length - 1];
@@ -24,7 +32,12 @@ function Card({ name, series }: { name: string; series: number[] }) {
   const settled = series.length >= 3 && Math.abs(delta) / first < 0.12;
 
   return (
-    <div className="flex flex-col gap-1 rounded-md border border-edge bg-surface-2/30 p-2.5">
+    <div
+      onClick={() => onSelect?.(name)}
+      className={`flex flex-col gap-1 rounded-md border border-edge bg-surface-2/30 p-2.5 transition-colors ${
+        onSelect ? "cursor-pointer hover:border-edge-2 hover:bg-surface-2/60" : ""
+      }`}
+    >
       <div className="flex items-baseline justify-between">
         <span className="text-xs text-ink">{label}</span>
         <span className="text-[10px] text-ink-faint">{hops}-hop</span>
@@ -60,7 +73,14 @@ function Card({ name, series }: { name: string; series: number[] }) {
 }
 
 // Clearing prices as small multiples — replaces the multi-line chart.
-export function PriceCards({ prices }: { prices: Record<string, number[]> }) {
+// Click a card for the category's full market detail.
+export function PriceCards({
+  prices,
+  onSelectCategory,
+}: {
+  prices: Record<string, number[]>;
+  onSelectCategory?: (key: string) => void;
+}) {
   const series = Object.entries(prices).filter(([, v]) => v.length > 0);
   // sort: most-traded categories first
   series.sort((a, b) => b[1].length - a[1].length);
@@ -68,7 +88,7 @@ export function PriceCards({ prices }: { prices: Record<string, number[]> }) {
   return (
     <Panel
       title="Clearing prices"
-      subtitle="per category — settling toward a clearing price = competition working"
+      subtitle="per category — settling toward a clearing price = competition working · click a market"
       pattern="controlled"
       className="h-80"
     >
@@ -79,7 +99,7 @@ export function PriceCards({ prices }: { prices: Record<string, number[]> }) {
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {series.map(([name, v]) => (
-            <Card key={name} name={name} series={v} />
+            <Card key={name} name={name} series={v} onSelect={onSelectCategory} />
           ))}
         </div>
       )}

@@ -20,7 +20,14 @@ type Snapshot = {
 
 // Controlled gen-UI: live balances. Bankrupt = the bar bled out.
 // Rows flash and show a Δ when money moves — this is where pay lands.
-export function Wallets({ agents }: { agents: AgentRow[] }) {
+// Click a row for the agent's dossier.
+export function Wallets({
+  agents,
+  onSelectAgent,
+}: {
+  agents: AgentRow[];
+  onSelectAgent?: (id: string) => void;
+}) {
   // previous balances → per-agent deltas, via React's render-phase
   // "derive state from previous props" pattern (no refs read in render).
   const key = agents.map((a) => `${a.id}:${a.balance.toFixed(2)}`).join("|");
@@ -49,7 +56,12 @@ export function Wallets({ agents }: { agents: AgentRow[] }) {
   const sorted = [...agents].sort((a, b) => b.balance - a.balance);
 
   return (
-    <Panel title="Wallets" pattern="controlled" className="h-72">
+    <Panel
+      title="Wallets"
+      subtitle="click an agent for its dossier"
+      pattern="controlled"
+      className="h-72"
+    >
       {sorted.length === 0 ? (
         <Empty hint="Balances appear once agents register.">
           No agents
@@ -63,9 +75,10 @@ export function Wallets({ agents }: { agents: AgentRow[] }) {
               // key includes the balance so the flash replays on every change
               <div
                 key={`${a.id}:${a.balance.toFixed(2)}`}
+                onClick={() => onSelectAgent?.(a.id)}
                 className={`flex items-center gap-2 rounded px-1 ${
                   moved ? "animate-flash-row" : ""
-                }`}
+                } ${onSelectAgent ? "cursor-pointer hover:bg-surface-2/60" : ""}`}
               >
                 <span
                   className={`w-32 truncate ${
