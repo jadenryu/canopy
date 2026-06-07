@@ -14,16 +14,16 @@ import {
 import { Empty } from "./Empty";
 import { Panel } from "./Panel";
 
-// semantic signal hues from globals.css (recharts needs raw hex)
+// restrained series palette — one hue family + two neutrals, no rainbow
 const COLORS = [
-  "#34d399",
-  "#38bdf8",
-  "#fbbf24",
-  "#e879f9",
-  "#a78bfa",
-  "#f87171",
-  "#a3e635",
-  "#2dd4bf",
+  "#10b981",
+  "#5d9dd5",
+  "#8f86d8",
+  "#9aa3ae",
+  "#34b27d",
+  "#d2a23f",
+  "#5f6772",
+  "#b078c9",
 ];
 
 // Controlled gen-UI: clearing-price convergence per (category, hops).
@@ -39,33 +39,32 @@ export function PriceChart({ prices }: { prices: Record<string, number[]> }) {
   return (
     <Panel
       title="Clearing prices"
-      subtitle="per (category, hops) — watch them converge"
+      subtitle="per category and complexity"
       pattern="controlled"
-      accent
       className="h-80"
     >
       {series.length === 0 ? (
-        <Empty glyph="◠" hint="run a scenario ▶">
-          no settlements yet
-        </Empty>
+        <Empty hint="Prices appear as jobs settle.">No settlements yet</Empty>
       ) : (
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -28 }}>
-            <CartesianGrid stroke="#1d2622" strokeDasharray="3 3" />
+            <CartesianGrid stroke="#20252d" strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="tick"
-              tick={{ fontSize: 10, fill: "#56615c" }}
-              stroke="#1d2622"
+              tick={{ fontSize: 10, fill: "#5f6772" }}
+              stroke="#20252d"
+              tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 10, fill: "#56615c" }}
-              stroke="#1d2622"
+              tick={{ fontSize: 10, fill: "#5f6772" }}
+              stroke="#20252d"
+              tickLine={false}
               domain={[0, "auto"]}
             />
             <Tooltip
               contentStyle={{
-                background: "#0c100e",
-                border: "1px solid #2c3a33",
+                background: "#101317",
+                border: "1px solid #2e3540",
                 borderRadius: 6,
                 fontSize: 11,
               }}
@@ -76,7 +75,7 @@ export function PriceChart({ prices }: { prices: Record<string, number[]> }) {
                 key={key}
                 dataKey={key}
                 stroke={COLORS[i % COLORS.length]}
-                strokeWidth={2}
+                strokeWidth={1.5}
                 dot={false}
                 activeDot={{ r: 3 }}
                 connectNulls

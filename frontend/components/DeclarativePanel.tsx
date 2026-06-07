@@ -49,7 +49,7 @@ function Section({ section }: { section: SpecSection }) {
                 {row.cells.map((cell, j) => (
                   <td key={j} className="py-1 pr-2">
                     {cell}
-                    {row.highlight && j === 0 ? " 🏆" : ""}
+                    {row.highlight && j === 0 ? " — selected" : ""}
                   </td>
                 ))}
               </tr>
@@ -68,8 +68,8 @@ export function DeclarativePanel({ spec }: { spec: UISpec | null }) {
   return (
     <Panel title={spec?.title ?? "Job detail"} pattern="declarative" className="h-72">
       {!spec ? (
-        <Empty glyph="⧉" hint="the backend streams a UI spec on first award">
-          awaiting first award…
+        <Empty hint="The backend streams a UI specification on first award.">
+          No award yet
         </Empty>
       ) : (
         <div className="flex animate-slide-in flex-col gap-3">

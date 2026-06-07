@@ -98,7 +98,7 @@ export default function Benchmarks() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col gap-3 bg-bg p-4 font-mono text-ink">
+    <main className="mx-auto flex min-h-screen w-full max-w-[1480px] flex-col gap-4 bg-bg px-6 py-4 text-ink">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-baseline gap-3">
           <h1 className="text-lg font-bold uppercase tracking-tight">
@@ -205,7 +205,7 @@ export default function Benchmarks() {
               disabled={busy || models.length === 0}
               className="rounded-md bg-canopy px-3 py-1.5 font-semibold text-black transition-colors hover:bg-positive disabled:opacity-40"
             >
-              ▶ queue benchmark run
+              Queue benchmark run
             </button>
             {status && <p className="text-[11px] text-ink-dim">{status}</p>}
           </div>

@@ -7,9 +7,9 @@ import { Empty } from "./Empty";
 import { Panel } from "./Panel";
 
 function barTone(a: AgentRow): string {
-  if (a.status === "bankrupt") return "bg-negative/70";
-  if (a.balance >= 100) return "bg-gradient-to-r from-emerald-700 to-emerald-400";
-  return "bg-gradient-to-r from-amber-700 to-amber-400";
+  if (a.status === "bankrupt") return "bg-negative/60";
+  if (a.balance >= 100) return "bg-canopy/70";
+  return "bg-working/60";
 }
 
 type Snapshot = {
@@ -51,8 +51,8 @@ export function Wallets({ agents }: { agents: AgentRow[] }) {
   return (
     <Panel title="Wallets" pattern="controlled" className="h-72">
       {sorted.length === 0 ? (
-        <Empty glyph="◇" hint="balances appear once agents register">
-          no agents yet
+        <Empty hint="Balances appear once agents register.">
+          No agents
         </Empty>
       ) : (
         <div className="flex flex-col gap-1.5 text-xs">
@@ -69,7 +69,7 @@ export function Wallets({ agents }: { agents: AgentRow[] }) {
               >
                 <span
                   className={`w-32 truncate ${
-                    a.status === "bankrupt" ? "text-negative line-through" : ""
+                    a.status === "bankrupt" ? "text-negative" : ""
                   }`}
                 >
                   {a.id}

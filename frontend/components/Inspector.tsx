@@ -41,10 +41,10 @@ export function AgentSheet({
   const bankrupt = agent.status === "bankrupt";
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-96 overflow-y-auto border-edge bg-surface font-mono sm:max-w-96">
+      <SheetContent className="w-96 overflow-y-auto border-edge bg-surface sm:max-w-96">
         <SheetHeader className="pb-0">
-          <SheetTitle className="flex items-center gap-2 font-mono text-ink">
-            {bankrupt ? "💀" : "●"} {agent.id}
+          <SheetTitle className="flex items-center gap-2 text-ink">
+            {agent.id}
             <span
               className={`rounded-full border px-2 py-0.5 text-[10px] ${
                 bankrupt
@@ -55,7 +55,7 @@ export function AgentSheet({
               {agent.status}
             </span>
           </SheetTitle>
-          <SheetDescription className="font-mono text-xs text-ink-dim">
+          <SheetDescription className="text-xs text-ink-dim">
             {agent.strategy} strategy · {agent.model_tier} tier
             {agent.parent_id ? ` · forked from ${agent.parent_id}` : ""}
           </SheetDescription>
@@ -76,7 +76,7 @@ export function AgentSheet({
           />
           {(agent.frauds ?? 0) > 0 && (
             <Stat
-              label="🚨 audit strikes"
+              label="audit convictions"
               value={String(agent.frauds)}
               tone="text-negative"
             />
@@ -163,16 +163,16 @@ export function JobSheet({
   const s = STATUS[job.status];
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-96 overflow-y-auto border-edge bg-surface font-mono sm:max-w-96">
+      <SheetContent className="w-96 overflow-y-auto border-edge bg-surface sm:max-w-96">
         <SheetHeader className="pb-0">
-          <SheetTitle className="flex items-center gap-2 font-mono text-ink">
+          <SheetTitle className="flex items-center gap-2 text-ink">
             {job.id}
             <span className={`flex items-center gap-1.5 text-[11px] ${s?.text ?? ""}`}>
               <span className={`h-1.5 w-1.5 rounded-full ${s?.dot ?? "bg-edge-2"}`} />
               {job.status}
             </span>
           </SheetTitle>
-          <SheetDescription className="font-mono text-xs text-ink-dim">
+          <SheetDescription className="text-xs text-ink-dim">
             {job.spec}
           </SheetDescription>
         </SheetHeader>
@@ -204,7 +204,9 @@ export function JobSheet({
                   >
                     <span className="w-4 text-ink-faint">{i + 1}</span>
                     <span>{b.agent_id}</span>
-                    {b.agent_id === job.winner_id && <span>🏆</span>}
+                    {b.agent_id === job.winner_id && (
+                      <span className="text-[10px] text-positive">winner</span>
+                    )}
                     <span className="ml-auto tabular-nums">{b.effective_bid.toFixed(2)}</span>
                   </button>
                 ))}

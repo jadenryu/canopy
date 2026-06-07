@@ -58,10 +58,10 @@ export function HiringGraph({ jobs }: { jobs: JobRow[] }) {
   };
 
   return (
-    <Panel title="Hiring graph" pattern="controlled" className="h-72">
+    <Panel title="Engagements" pattern="controlled" className="h-72">
       {top.length === 0 ? (
-        <Empty glyph="⌥" hint="subcontracts nest under their parent job">
-          no hires yet
+        <Empty hint="Subcontracts nest under their parent job.">
+          No engagements yet
         </Empty>
       ) : (
         top.map((j) => render(j, 0))

@@ -31,33 +31,26 @@ type GLink = SimulationLinkDatum<GNode> & {
   jobs: JobRow[]; // every job on this edge, newest last
 };
 
+// edges stay neutral; color marks only the in-flight and failed states
 const EDGE_COLOR: Record<string, string> = {
-  settled: "var(--color-positive)",
+  executing: "var(--color-canopy)",
+  awarded: "var(--color-canopy)",
+  verifying: "var(--color-verify)",
   rejected: "var(--color-negative)",
   failed: "var(--color-negative)",
-  executing: "var(--color-working)",
-  awarded: "var(--color-working)",
-  verifying: "var(--color-verify)",
 };
 
 function nodeRadius(a?: AgentRow): number {
-  if (!a) return 14; // the human hub
-  return 8 + Math.sqrt(Math.max(0, a.balance)) * 0.9; // wealth = mass
-}
-
-function nodeColor(a?: AgentRow): string {
-  if (!a) return "var(--color-info)";
-  if (a.status === "bankrupt") return "var(--color-negative)";
-  if (a.strategy === "manager") return "var(--color-special)";
-  return "var(--color-canopy)";
+  if (!a) return 11; // the client hub
+  return 7 + Math.sqrt(Math.max(0, a.balance)) * 0.7; // wealth = mass
 }
 
 // ----- the hero ---------------------------------------------------------------
 
-// The market as a living network: agents orbit the human client, sized by
-// wallet, ringed by reputation; every hire draws an edge (subcontracts
-// branch agent→agent). Click anything to inspect it. This is the same
-// AG-UI state the widgets render — just drawn as an economy.
+// The market as a network: agents sized by wallet, ringed by reputation;
+// every engagement draws an edge (subcontracts branch agent→agent).
+// Shape encodes role — square client, diamond managers, circles for
+// workers. Click any node or edge to inspect it.
 export function MarketGraph({
   agents,
   jobs,
@@ -111,10 +104,10 @@ export function MarketGraph({
   useEffect(() => {
     let raf = 0;
     const sim = forceSimulation<GNode>([])
-      .force("link", forceLink<GNode, GLink>([]).id((d) => d.id).distance(110).strength(0.25))
-      .force("charge", forceManyBody().strength(-220))
+      .force("link", forceLink<GNode, GLink>([]).id((d) => d.id).distance(105).strength(0.25))
+      .force("charge", forceManyBody().strength(-210))
       .force("center", forceCenter(0, 0).strength(0.06))
-      .force("collide", forceCollide<GNode>().radius((d) => nodeRadius(d.agent) + 14))
+      .force("collide", forceCollide<GNode>().radius((d) => nodeRadius(d.agent) + 13))
       .alphaDecay(0.04)
       .on("tick", () => {
         if (raf) return; // coalesce ticks into one paint per frame
@@ -133,8 +126,6 @@ export function MarketGraph({
   }, []);
 
   // keep node payloads (wallet size, reputation ring) fresh on EVERY delta.
-  // Repaint goes through the sim's tick→rAF path: a whisper of alpha makes
-  // the graph visibly breathe when money moves, and keeps renders frame-gated.
   useEffect(() => {
     const map = nodesRef.current;
     let dirty = false;
@@ -167,7 +158,7 @@ export function MarketGraph({
           id: a.id,
           kind: "agent",
           agent: a,
-          // newcomers (forks!) enter from the edge, not the void
+          // newcomers (forks, fielded models) enter from the edge
           x: size.w / 2 + (Math.random() - 0.5) * size.w * 0.8,
           y: size.h / 2 + (Math.random() - 0.5) * size.h * 0.8,
         });
@@ -187,7 +178,7 @@ export function MarketGraph({
     (sim.force("link") as ForceLink<GNode, GLink>).links(simLinks);
     (sim.force("center") as ForceCenter<GNode>).x(size.w / 2).y(size.h / 2);
     (sim.force("collide") as ForceCollide<GNode>).radius(
-      (d) => nodeRadius(d.agent) + 14
+      (d) => nodeRadius(d.agent) + 13
     );
     sim.alpha(0.5).restart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -201,20 +192,53 @@ export function MarketGraph({
 
   return (
     <Panel
-      title="The market"
-      subtitle="agents sized by wallet · ringed by reputation · click to inspect"
+      title="Market network"
+      subtitle="node size = balance · ring = reputation · select to inspect"
       pattern="controlled"
       accent
       className="h-[26rem]"
+      footer={
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="flex items-center gap-1.5">
+            <svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="none" stroke="var(--color-ink-faint)" /></svg>
+            worker
+          </span>
+          <span className="flex items-center gap-1.5">
+            <svg width="10" height="10"><rect x="1.5" y="1.5" width="7" height="7" transform="rotate(45 5 5)" fill="none" stroke="var(--color-ink-faint)" /></svg>
+            manager
+          </span>
+          <span className="flex items-center gap-1.5">
+            <svg width="10" height="10"><rect x="1" y="1" width="8" height="8" fill="none" stroke="var(--color-ink-faint)" /></svg>
+            client
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-px w-4 bg-canopy" /> in flight
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-px w-4 bg-negative" /> rejected
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-px w-4 bg-edge-2" /> settled
+          </span>
+        </div>
+      }
     >
       {agents.length === 0 ? (
-        <Empty glyph="❉" hint="run a scenario ▶ and the economy materializes">
-          no market yet
+        <Empty hint="Run a scenario to populate the network.">
+          No market activity
         </Empty>
       ) : (
-        <div ref={box} className="h-full w-full">
+        <div
+          ref={box}
+          className="h-full w-full rounded-md"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, var(--color-edge) 1px, transparent 1px)",
+            backgroundSize: "24px 24px",
+          }}
+        >
           <svg width={size.w} height={size.h} className="overflow-visible">
-            {/* edges: who hires whom */}
+            {/* edges: engagements between client and worker */}
             {links.map((l) => {
               const s = pos(typeof l.source === "string" ? l.source : (l.source as GNode).id);
               const t = pos(typeof l.target === "string" ? l.target : (l.target as GNode).id);
@@ -223,7 +247,7 @@ export function MarketGraph({
               const active = latest.status === "executing" || latest.status === "awarded";
               return (
                 <g key={l.key} onClick={() => onSelectJob(latest.id)} className="cursor-pointer">
-                  {/* fat invisible hit area */}
+                  {/* generous invisible hit area */}
                   <line x1={s.x} y1={s.y} x2={t.x} y2={t.y} stroke="transparent" strokeWidth={14} />
                   <line
                     x1={s.x}
@@ -231,58 +255,86 @@ export function MarketGraph({
                     x2={t.x}
                     y2={t.y}
                     stroke={EDGE_COLOR[latest.status] ?? "var(--color-edge-2)"}
-                    strokeWidth={Math.min(1 + l.jobs.length * 0.8, 5)}
-                    strokeOpacity={active ? 0.95 : 0.45}
-                    strokeDasharray={active ? "6 4" : undefined}
+                    strokeWidth={Math.min(1 + l.jobs.length * 0.5, 3.5)}
+                    strokeOpacity={active ? 0.9 : 0.6}
+                    strokeDasharray={active ? "5 4" : undefined}
                     className={active ? "animate-edge-flow" : ""}
                   />
                 </g>
               );
             })}
 
-            {/* nodes: the human hub + every agent */}
+            {/* nodes: the client hub + every agent */}
             {nodes.map((n) => {
               const r = nodeRadius(n.agent);
               const busy = n.kind === "agent" && executing.has(n.id);
-              const bankrupt = n.agent?.status === "bankrupt";
+              const bankrupt =
+                n.agent?.status === "bankrupt" || n.agent?.status === "retired";
+              const manager = n.agent?.strategy === "manager";
+              const stroke = bankrupt
+                ? "var(--color-negative)"
+                : "var(--color-ink-faint)";
               return (
                 <g
                   key={n.id}
                   transform={`translate(${n.x ?? 0},${n.y ?? 0})`}
                   onClick={() => n.kind === "agent" && onSelectAgent(n.id)}
                   className={n.kind === "agent" ? "cursor-pointer" : ""}
-                  opacity={bankrupt ? 0.45 : 1}
+                  opacity={bankrupt ? 0.4 : 1}
                 >
-                  {/* reputation ring */}
+                  {/* reputation ring — the trust signal, in the one accent */}
                   {n.agent && !bankrupt && (
                     <circle
-                      r={r + 3.5}
+                      r={r + 3}
                       fill="none"
-                      stroke={nodeColor(n.agent)}
-                      strokeOpacity={0.35 + n.agent.reputation * 0.55}
-                      strokeWidth={1.5 + n.agent.reputation * 2.5}
+                      stroke="var(--color-canopy)"
+                      strokeOpacity={0.15 + n.agent.reputation * 0.6}
+                      strokeWidth={1.5}
                     />
                   )}
-                  <circle
-                    r={r}
-                    fill="var(--color-surface-2)"
-                    stroke={nodeColor(n.agent)}
-                    strokeWidth={n.kind === "human" ? 2.5 : 1.5}
-                    className={busy ? "animate-pulse-dot" : ""}
-                  />
+                  {n.kind === "human" ? (
+                    <rect
+                      x={-r}
+                      y={-r}
+                      width={r * 2}
+                      height={r * 2}
+                      rx={2}
+                      fill="var(--color-surface-2)"
+                      stroke="var(--color-ink-dim)"
+                      strokeWidth={1.25}
+                    />
+                  ) : manager ? (
+                    <rect
+                      x={-r * 0.85}
+                      y={-r * 0.85}
+                      width={r * 1.7}
+                      height={r * 1.7}
+                      rx={2}
+                      transform="rotate(45)"
+                      fill="var(--color-surface-2)"
+                      stroke={stroke}
+                      strokeWidth={1.25}
+                      strokeDasharray={bankrupt ? "3 2" : undefined}
+                      className={busy ? "animate-pulse-dot" : ""}
+                    />
+                  ) : (
+                    <circle
+                      r={r}
+                      fill="var(--color-surface-2)"
+                      stroke={stroke}
+                      strokeWidth={1.25}
+                      strokeDasharray={bankrupt ? "3 2" : undefined}
+                      className={busy ? "animate-pulse-dot" : ""}
+                    />
+                  )}
                   <text
                     textAnchor="middle"
-                    dy={n.kind === "human" ? 4 : r + 13}
-                    className="pointer-events-none select-none fill-(--color-ink-dim)"
-                    fontSize={n.kind === "human" ? 12 : 10}
+                    dy={n.kind === "human" ? r + 14 : r + 13}
+                    className="num pointer-events-none select-none fill-(--color-ink-dim)"
+                    fontSize={10}
                   >
-                    {n.kind === "human" ? "⌂" : n.id.replace("worker-", "")}
+                    {n.kind === "human" ? "client" : n.id.replace("worker-", "")}
                   </text>
-                  {bankrupt && (
-                    <text textAnchor="middle" dy={4} fontSize={11} className="pointer-events-none select-none">
-                      💀
-                    </text>
-                  )}
                 </g>
               );
             })}

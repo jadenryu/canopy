@@ -17,8 +17,8 @@ export function ReportFrame({ html }: { html: string | null }) {
       className="h-72"
     >
       {!html ? (
-        <Empty glyph="✎" hint="agent-drawn HTML, sandboxed">
-          the analyst files its report after the scenario…
+        <Empty hint="Agent-authored HTML, rendered in a sandboxed frame.">
+          Report generates after a scenario completes
         </Empty>
       ) : (
         <iframe

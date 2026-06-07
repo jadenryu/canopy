@@ -4,62 +4,63 @@ import { AgentRow } from "@/lib/useMarketState";
 import { Empty } from "./Empty";
 import { Panel } from "./Panel";
 
-function rankTone(i: number): string {
-  if (i === 0) return "text-working font-bold";
-  if (i < 3) return "text-ink";
-  return "text-ink-faint";
-}
-
-// Controlled gen-UI: the reputation ranking (mirrors the Weave Leaderboard).
+// Reputation ranking — mirrors the published Weave Leaderboard.
 export function Leaderboard({ agents }: { agents: AgentRow[] }) {
   return (
-    <Panel title="Reputation leaderboard" pattern="controlled" className="h-72">
+    <Panel
+      title="Reputation"
+      subtitle="ranking mirrors the Weave leaderboard"
+      pattern="controlled"
+      className="h-72"
+    >
       {agents.length === 0 ? (
-        <Empty glyph="♛" hint="agents register when the market opens">
-          no agents yet
-        </Empty>
+        <Empty hint="Agents register when the market opens.">No agents</Empty>
       ) : (
-        <div className="flex flex-col gap-1.5 text-xs">
-          {agents.map((a, i) => (
-            <div
-              key={a.id}
-              className={`flex items-center gap-2 ${
-                a.status === "bankrupt" ? "opacity-40 line-through" : ""
-              }`}
-            >
-              <span className={`w-4 text-right ${rankTone(i)}`}>{i + 1}</span>
-              <span
-                className={`w-32 truncate ${
-                  a.status === "bankrupt" ? "text-negative" : ""
+        <div className="flex flex-col">
+          {agents.map((a, i) => {
+            const out = a.status === "bankrupt" || a.status === "retired";
+            return (
+              <div
+                key={a.id}
+                className={`flex items-center gap-3 border-b border-edge/50 py-1.5 text-xs last:border-0 ${
+                  out ? "opacity-45" : ""
                 }`}
               >
-                {a.id}
-                {i === 0 && a.status !== "bankrupt" && (
-                  <span className="text-working"> 👑</span>
-                )}
-                {(a.frauds ?? 0) > 0 && (
-                  <span title={`${a.frauds} audit conviction(s)`}> 🚨</span>
-                )}
-              </span>
-              <span className="rounded bg-surface-2 px-1 py-px text-[10px] text-ink-faint">
-                {a.strategy}
-              </span>
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-700 to-emerald-400 transition-all duration-500"
-                  style={{ width: `${Math.min(100, a.reputation * 100)}%` }}
-                />
+                <span className="num w-5 text-right text-ink-faint">{i + 1}</span>
+                <span className="w-36 truncate text-ink">
+                  {a.id}
+                  {(a.frauds ?? 0) > 0 && (
+                    <span
+                      className="ml-1.5 rounded border border-negative/40 px-1 py-px text-[9px] text-negative"
+                      title={`${a.frauds} audit conviction(s)`}
+                    >
+                      audit
+                    </span>
+                  )}
+                  {out && (
+                    <span className="ml-1.5 text-[10px] text-ink-faint">
+                      {a.status}
+                    </span>
+                  )}
+                </span>
+                <span className="w-20 truncate text-[11px] text-ink-faint">
+                  {a.strategy}
+                </span>
+                <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-2">
+                  <div
+                    className="h-full rounded-full bg-canopy/70 transition-all duration-500"
+                    style={{ width: `${Math.min(100, a.reputation * 100)}%` }}
+                  />
+                </div>
+                <span className="num w-10 text-right text-ink">
+                  {a.reputation.toFixed(2)}
+                </span>
+                <span className="num w-14 text-right text-[11px] text-ink-faint">
+                  {a.jobs_won}–{a.jobs_failed}
+                </span>
               </div>
-              <span className="w-10 text-right tabular-nums">
-                {a.reputation.toFixed(2)}
-              </span>
-              <span className="w-14 text-right text-[10px]">
-                <span className="text-positive">{a.jobs_won}w</span>
-                <span className="text-ink-faint">/</span>
-                <span className="text-negative">{a.jobs_failed}f</span>
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Panel>

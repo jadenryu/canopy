@@ -11,8 +11,8 @@ export function OrderBook({ jobs }: { jobs: JobRow[] }) {
   return (
     <Panel title="Order book" pattern="controlled" className="h-72">
       {recent.length === 0 ? (
-        <Empty glyph="≡" hint="run a scenario ▶">
-          no jobs yet
+        <Empty hint="Open orders appear here.">
+          No orders yet
         </Empty>
       ) : (
         <table className="w-full text-left text-xs">
@@ -37,7 +37,7 @@ export function OrderBook({ jobs }: { jobs: JobRow[] }) {
                   <td className="py-1 pr-2 text-ink-dim">{j.id}</td>
                   <td className="py-1 pr-2">
                     {j.category}
-                    {j.hops >= 3 && <span className="text-working"> ★</span>}
+                    {j.hops >= 3 && <span className="text-ink-faint"> · 3-hop</span>}
                   </td>
                   <td className="py-1 pr-2 text-ink-dim">{j.bids.length}</td>
                   <td className="py-1 pr-2">{j.winner_id ?? "—"}</td>
