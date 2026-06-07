@@ -16,6 +16,7 @@ export type Lesson = {
 export type AgentRow = {
   id: string;
   name: string;
+  label: string; // human-readable role description
   strategy: string;
   model_tier: string;
   status: string;
@@ -88,6 +89,7 @@ export type MarketState = {
   report_html: string | null;
   pending_action: PendingAction | null;
   reserve_price: number;
+  paused: boolean;
 };
 
 const INITIAL: MarketState = {
@@ -102,6 +104,7 @@ const INITIAL: MarketState = {
   report_html: null,
   pending_action: null,
   reserve_price: 0.5,
+  paused: false,
 };
 
 export function useMarketState() {
@@ -163,4 +166,5 @@ export const control = {
     post("/control/request_action", { kind, amount: amount ?? 50 }),
   approve: (actionId: string, approve: boolean) =>
     post("/control/approve", { action_id: actionId, approve }),
+  pause: (paused: boolean) => post("/control/pause", { paused }),
 };

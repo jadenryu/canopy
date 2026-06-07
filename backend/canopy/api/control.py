@@ -110,6 +110,22 @@ async def set_reserve(body: ReserveRequest):
     return {"status": "ok", "reserve_price": settings.reserve_price}
 
 
+class PauseRequest(BaseModel):
+    paused: bool
+
+
+@router.post("/pause")
+async def pause(body: PauseRequest):
+    """Freeze the simulation — in-flight jobs finish, no new ones post."""
+    r = get_redis()
+    if body.paused:
+        await r.set("market:paused", "1")
+    else:
+        await r.delete("market:paused")
+    await events.emit("paused" if body.paused else "resumed", {})
+    return {"status": "paused" if body.paused else "running"}
+
+
 # --- Arena: human-fielded OpenRouter agents ------------------------------------
 
 
@@ -176,7 +192,8 @@ async def register_custom_agent(body: CustomAgentRequest):
     )
     market.workers[name] = worker
     await registry.register_agent(
-        name, name, worker.display_tier, strategy.name, balance=body.stake
+        name, name, worker.display_tier, strategy.name, balance=body.stake,
+        label=f"{body.model} — fielded by you",
     )
     await r.sadd(CUSTOM_AGENTS_SET, name)
     await matching.index_agent_skills(name, worker.skill_text)

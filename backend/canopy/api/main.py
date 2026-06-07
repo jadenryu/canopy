@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from canopy.api.agui import router as agui_router
 from canopy.api.bench import router as bench_router
 from canopy.api.control import router as control_router
+from canopy.api.meta import router as meta_router
 from canopy.api.rest import router as rest_router
 from canopy.redis_client import get_redis
 from canopy.weave_setup import init_weave
@@ -23,6 +24,7 @@ app.include_router(agui_router)
 app.include_router(rest_router)
 app.include_router(control_router)
 app.include_router(bench_router)
+app.include_router(meta_router)
 
 
 @app.on_event("startup")

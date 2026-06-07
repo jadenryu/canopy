@@ -67,7 +67,9 @@ async def run_benchmark(
         w = Worker(agent_id, strategy=Undercutter(random.Random(rng.random())), model=model, mock=mock)
         w.skill_text = f"Benchmark challenger running {model}. Answers any question."
         fielded[model] = w
-        await registry.register_agent(agent_id, agent_id, w.display_tier, "undercutter")
+        await registry.register_agent(
+            agent_id, agent_id, w.display_tier, "undercutter", label=f"{model} (benchmark)"
+        )
         await matching.index_agent_skills(agent_id, w.skill_text)
 
     # bench market = house fleet + challengers; in mock runs the WHOLE fleet

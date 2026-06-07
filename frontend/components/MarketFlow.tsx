@@ -90,7 +90,7 @@ export function MarketFlow({
     return { left: LANE_X - CARD_W - 28, top: y + (LANE_H - CARD_H + 8) / 2 };
   };
 
-  const boardH = Math.max(lanes.length * LANE_H, intake.length * (CARD_H + 8), 240);
+  const boardH = Math.max(lanes.length * LANE_H, intake.length * (CARD_H + 8), 240) + 34;
 
   return (
     <Panel
@@ -123,15 +123,22 @@ export function MarketFlow({
       ) : (
         <div ref={box} className="relative h-full w-full overflow-y-auto overflow-x-hidden">
           <div className="relative" style={{ height: boardH }}>
-            {/* column headings */}
-            <div className="pointer-events-none absolute -top-1 left-0 text-[10px] uppercase tracking-wide text-ink-faint">
-              Intake
+            {/* column containers */}
+            <div
+              className="pointer-events-none absolute inset-y-0 rounded-lg border border-edge/70 bg-surface-2/20"
+              style={{ left: -8, width: CARD_W + 16 }}
+            >
+              <div className="px-3 pt-1.5 text-[10px] uppercase tracking-wide text-ink-faint">
+                Intake · {String(intake.length)} open
+              </div>
             </div>
             <div
-              className="pointer-events-none absolute -top-1 text-[10px] uppercase tracking-wide text-ink-faint"
-              style={{ left: LANE_X }}
+              className="pointer-events-none absolute inset-y-0 rounded-lg border border-edge/70 bg-surface-2/20"
+              style={{ left: LANE_X - 8, right: 0 }}
             >
-              Agents
+              <div className="px-3 pt-1.5 text-[10px] uppercase tracking-wide text-ink-faint">
+                Agents · ranked by reputation
+              </div>
             </div>
 
             {/* auction + award lines */}
@@ -143,7 +150,7 @@ export function MarketFlow({
               {board.map((j) => {
                 const from = cardPos(j);
                 const x0 = from.left + CARD_W;
-                const y0 = from.top + CARD_H / 2 + 6;
+                const y0 = from.top + CARD_H / 2 + 20;
                 const x1 = LANE_X - 4;
                 const curve = (y1: number, key: string, cls: string, dash?: string, w = 1) => (
                   <path
@@ -160,7 +167,7 @@ export function MarketFlow({
                   return j.bids.map((b) =>
                     laneIndex.has(b.agent_id)
                       ? curve(
-                          laneY(b.agent_id) + LANE_H / 2,
+                          laneY(b.agent_id) + LANE_H / 2 + 14,
                           `${j.id}-${b.agent_id}`,
                           "stroke-(--color-ink-faint) opacity-50",
                           "3 3"
@@ -173,7 +180,7 @@ export function MarketFlow({
                   ["awarded", "executing", "verifying"].includes(j.status)
                 ) {
                   return curve(
-                    laneY(j.winner_id) + LANE_H / 2,
+                    laneY(j.winner_id) + LANE_H / 2 + 14,
                     `${j.id}-win`,
                     "stroke-(--color-canopy) opacity-80",
                     j.status === "executing" ? "6 4" : undefined,
@@ -199,7 +206,7 @@ export function MarketFlow({
                         : "border-negative/50 opacity-60"
                       : "border-edge hover:border-edge-2"
                   }`}
-                  style={{ left: pos.left, top: pos.top + 12, width: CARD_W }}
+                  style={{ left: pos.left, top: pos.top + 26, width: CARD_W }}
                 >
                   <div className="flex items-center gap-1.5 text-[11px]">
                     <span
@@ -207,15 +214,15 @@ export function MarketFlow({
                         STATUS_DOT[j.status] ?? "bg-edge-2"
                       } ${j.status === "executing" ? "animate-pulse-dot" : ""}`}
                     />
-                    <span className="num text-ink">{j.id}</span>
-                    <span className="ml-auto text-[10px] text-ink-faint">
-                      {j.status}
+                    <span className="truncate text-ink" title={j.spec}>
+                      {j.spec}
                     </span>
                   </div>
                   <div className="mt-0.5 flex items-baseline gap-1.5 text-[10px] text-ink-faint">
                     <span>{j.category}</span>
                     {j.hops >= 3 && <span>· 3-hop</span>}
                     {j.client_id !== "human" && <span>· for {j.client_id}</span>}
+                    <span>· {j.status}</span>
                     <span className="num ml-auto text-ink-dim">
                       {j.price ? j.price.toFixed(2) : `≤ ${j.bounty_cap.toFixed(0)}`}
                     </span>
@@ -243,8 +250,8 @@ export function MarketFlow({
                   }`}
                   style={{
                     left: LANE_X,
-                    top: laneY(a.id) + 12,
-                    width: Math.max(220, width - LANE_X),
+                    top: laneY(a.id) + 26,
+                    width: Math.max(220, width - LANE_X - 8),
                     height: LANE_H - 6,
                   }}
                 >
@@ -264,9 +271,11 @@ export function MarketFlow({
                       <circle cx="5" cy="5" r="4" fill="none" stroke="var(--color-ink-dim)" />
                     )}
                   </svg>
-                  <span className="w-32 truncate text-xs text-ink">{a.id}</span>
-                  <span className="hidden w-20 truncate text-[10px] text-ink-faint md:inline">
-                    {a.strategy}
+                  <span className="w-44 truncate text-xs text-ink" title={a.id}>
+                    {a.label || a.id}
+                  </span>
+                  <span className="num hidden w-24 truncate text-[10px] text-ink-faint md:inline">
+                    {a.id}
                   </span>
                   <div className="h-1 max-w-28 flex-1 overflow-hidden rounded-full bg-edge">
                     <div

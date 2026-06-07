@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Empty } from "@/components/Empty";
@@ -98,23 +97,14 @@ export default function Benchmarks() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[1480px] flex-col gap-4 bg-bg px-6 py-4 text-ink">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-lg font-bold uppercase tracking-tight">
-            🌳 Canopy <span className="text-canopy">/ benchmarks</span>
-          </h1>
-          <span className="text-xs text-ink-faint">
-            models tested where it hurts — inside a live economy
-          </span>
-        </div>
-        <Link
-          href="/"
-          className="rounded-md border border-edge px-3 py-1 text-xs text-ink-dim transition-colors hover:border-edge-2 hover:text-ink"
-        >
-          ← trading floor
-        </Link>
-      </header>
+    <div className="flex flex-col gap-4">
+      <div>
+        <h1 className="text-lg font-semibold">Benchmarks</h1>
+        <p className="max-w-2xl text-xs text-ink-faint">
+          Import a public multi-hop benchmark and run models through the live
+          market — scored by the same Weave referee that settles real trades.
+        </p>
+      </div>
 
       {/* the pitch — why this is different from a static eval */}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-y border-edge px-1 py-1.5 text-[11px] text-ink-dim">
@@ -283,6 +273,6 @@ export default function Benchmarks() {
         live trades · models routed through OpenRouter · the market allocator is
         the product: compare it against the baselines
       </footer>
-    </main>
+    </div>
   );
 }

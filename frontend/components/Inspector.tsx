@@ -44,7 +44,7 @@ export function AgentSheet({
       <SheetContent className="w-96 overflow-y-auto border-edge bg-surface sm:max-w-96">
         <SheetHeader className="pb-0">
           <SheetTitle className="flex items-center gap-2 text-ink">
-            {agent.id}
+            {agent.label || agent.id}
             <span
               className={`rounded-full border px-2 py-0.5 text-[10px] ${
                 bankrupt
@@ -56,7 +56,8 @@ export function AgentSheet({
             </span>
           </SheetTitle>
           <SheetDescription className="text-xs text-ink-dim">
-            {agent.strategy} strategy · {agent.model_tier} tier
+            <span className="num">{agent.id}</span> · {agent.strategy} strategy ·{" "}
+            {agent.model_tier}
             {agent.parent_id ? ` · forked from ${agent.parent_id}` : ""}
           </SheetDescription>
         </SheetHeader>

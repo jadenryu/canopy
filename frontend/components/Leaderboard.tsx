@@ -27,8 +27,8 @@ export function Leaderboard({ agents }: { agents: AgentRow[] }) {
                 }`}
               >
                 <span className="num w-5 text-right text-ink-faint">{i + 1}</span>
-                <span className="w-36 truncate text-ink">
-                  {a.id}
+                <span className="w-44 truncate text-ink" title={a.id}>
+                  {a.label || a.id}
                   {(a.frauds ?? 0) > 0 && (
                     <span
                       className="ml-1.5 rounded border border-negative/40 px-1 py-px text-[9px] text-negative"

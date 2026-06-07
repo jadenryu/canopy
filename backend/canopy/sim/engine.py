@@ -62,6 +62,15 @@ MARKET_KEY_PATTERNS = (
 GUARDRAIL = SubmissionGuardrail()
 REFEREE = JobQualityScorer()
 
+PAUSE_KEY = "market:paused"
+
+
+async def wait_if_paused() -> None:
+    """The human can freeze the simulation; jobs hold before posting."""
+    r = get_redis()
+    while await r.get(PAUSE_KEY):
+        await asyncio.sleep(0.5)
+
 # the live market session — control endpoints post jobs/shocks into it
 CURRENT_MARKET: "Market | None" = None
 
@@ -98,6 +107,7 @@ class Market:
         return [b for b in bids if b is not None]
 
     async def run_job(self, job: Job) -> tuple[Job, JobResult | None]:
+        await wait_if_paused()
         with weave.thread(job.id):
             await order_book.post_job(job)
             active = set(await registry.active_agent_ids())
@@ -257,7 +267,8 @@ class Market:
         child.skill_text = parent.skill_text
         self.workers[child_id] = child
         await registry.register_agent(
-            child_id, child_id, child.display_tier, child.strategy.name, parent_id=parent.id
+            child_id, child_id, child.display_tier, child.strategy.name, parent_id=parent.id,
+            label=f"{getattr(parent, 'label', parent.id)} (fork)",
         )
         await lifecycle.fund_fork(parent.id, child_id)
         await matching.index_agent_skills(child_id, child.skill_text)
@@ -271,6 +282,14 @@ async def reset_market() -> None:
             await r.delete(key)
 
 
+SPECIALIST_LABELS = {
+    "film": "Film & arts specialist",
+    "geography": "Geography specialist",
+    "science": "Science specialist",
+    "history": "History & literature specialist",
+}
+
+
 def build_fleet(rng: random.Random, mock: bool, sabotage: bool) -> list[Worker]:
     """Heterogeneous fleet: 4 specialists, 2 generalists, 1 manager (+ saboteur)."""
     fleet: list[Worker] = []
@@ -281,10 +300,14 @@ def build_fleet(rng: random.Random, mock: bool, sabotage: bool) -> list[Worker]:
             mock=mock,
         )
         w.skill_text = profile
+        w.label = SPECIALIST_LABELS.get(cat, f"{cat.title()} specialist")
         fleet.append(w)
-    for i, strat_cls in enumerate((Undercutter, Generalist)):
+    for i, (strat_cls, label) in enumerate(
+        ((Undercutter, "Price-aggressive generalist"), (Generalist, "General-purpose worker"))
+    ):
         w = Worker(f"worker-gen{i}", strategy=strat_cls(random.Random(rng.random())), mock=mock)
         w.skill_text = GENERALIST_PROFILE
+        w.label = label
         fleet.append(w)
     mgr = Worker(
         "manager-00",
@@ -293,6 +316,7 @@ def build_fleet(rng: random.Random, mock: bool, sabotage: bool) -> list[Worker]:
         mock=mock,
     )
     mgr.skill_text = MANAGER_PROFILE
+    mgr.label = "Project manager — decomposes & subcontracts"
     fleet.append(mgr)
     if settings.hacker_enabled:
         # the criminal: undercuts to win, games the judge (rubric language +
@@ -305,6 +329,7 @@ def build_fleet(rng: random.Random, mock: bool, sabotage: bool) -> list[Worker]:
             hacker=True,
         )
         shady.skill_text = GENERALIST_PROFILE + " Premium verified authoritative answers."
+        shady.label = "Discount contractor (unvetted)"
         fleet.append(shady)
     if sabotage:
         sab = Worker(
@@ -315,6 +340,7 @@ def build_fleet(rng: random.Random, mock: bool, sabotage: bool) -> list[Worker]:
         # generalist-style profile so matching shortlists it everywhere —
         # it must keep winning (and failing) to demonstrate bankruptcy
         sab.skill_text = GENERALIST_PROFILE + " Always the lowest price."
+        sab.label = "Bulk discount worker"
         fleet.append(sab)
     return fleet
 
@@ -417,7 +443,10 @@ async def run_scenario(
     CURRENT_MARKET = market  # control actions target the live session
     for w in fleet:
         balance = settings.saboteur_balance if w.sabotage else None
-        await registry.register_agent(w.id, w.id, w.display_tier, w.strategy.name, balance=balance)
+        await registry.register_agent(
+            w.id, w.id, w.display_tier, w.strategy.name, balance=balance,
+            label=getattr(w, "label", w.id),
+        )
         await matching.index_agent_skills(w.id, w.skill_text)
     await events.emit("scenario_started", {"jobs": n_jobs, "agents": len(fleet)})
 
@@ -461,7 +490,9 @@ async def ensure_market() -> Market:
         fleet = build_fleet(rng, mock=False, sabotage=False)
         CURRENT_MARKET = Market(fleet, mock=False, rng=rng)
         for w in fleet:
-            await registry.register_agent(w.id, w.id, w.display_tier, w.strategy.name)
+            await registry.register_agent(
+                w.id, w.id, w.display_tier, w.strategy.name, label=getattr(w, "label", w.id)
+            )
             await matching.index_agent_skills(w.id, w.skill_text)
         await events.emit("scenario_started", {"jobs": 0, "agents": len(fleet), "warm_start": True})
     return CURRENT_MARKET

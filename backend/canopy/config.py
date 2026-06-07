@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     wandb_api_key: str = ""
     weave_project: str = "canopy"
+    weave_entity: str = "jadenryu_nvcc"  # W&B entity for judge-facing links
     redis_url: str = "redis://localhost:6379"
 
     # --- model tiers (verified current, Step 0) ---

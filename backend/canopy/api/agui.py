@@ -45,6 +45,7 @@ DELTA_KEYS = (
     "report_html",
     "pending_action",
     "reserve_price",
+    "paused",
 )
 
 

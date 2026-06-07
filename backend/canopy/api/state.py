@@ -33,6 +33,7 @@ async def market_snapshot() -> dict:
             {
                 "id": a["id"],
                 "name": a.get("name", a["id"]),
+                "label": a.get("label") or a["id"],
                 "strategy": a.get("strategy", ""),
                 "model_tier": a.get("model_tier", ""),
                 "status": a.get("status", "active"),
@@ -115,4 +116,5 @@ async def market_snapshot() -> dict:
         # HITL: high-impact action awaiting human approval (None = nothing)
         "pending_action": json.loads(pending_raw) if pending_raw else None,
         "reserve_price": settings.reserve_price,
+        "paused": bool(await r.get("market:paused")),
     }
