@@ -137,7 +137,7 @@ async def prepare(condition: str, seed: int, warmup: int) -> dict:
         # condition they die during warm-up — the mechanism prices them out
         # before the eval window. Static allocators keep hiring them forever.
         balance = settings.saboteur_balance if w.sabotage else None
-        await registry.register_agent(w.id, w.id, w.model_tier, w.strategy.name, balance=balance)
+        await registry.register_agent(w.id, w.id, w.display_tier, w.strategy.name, balance=balance)
         await matching.index_agent_skills(w.id, w.skill_text)
 
     desc: dict = {}

@@ -9,20 +9,38 @@ same AG-UI connection as everything else.
 """
 import asyncio
 import json
+import random
+import re
 import uuid
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from canopy.agents.skills import SPECIALIST_PROFILES
+from canopy.agents.strategies import (
+    Generalist,
+    Lowballer,
+    Manager,
+    Premium,
+    Specialist,
+    Undercutter,
+)
+from canopy.agents.worker import Worker
 from canopy.api.state import PENDING_ACTION_KEY as PENDING_KEY
 from canopy.config import settings
 from canopy.jobs.schema import Job
-from canopy.market import events, ledger, registry
+from canopy.market import events, ledger, matching, registry
 from canopy.redis_client import get_redis
 from canopy.sim import shock
 from canopy.sim.engine import ensure_market
 
 router = APIRouter(prefix="/control")
+
+CUSTOM_AGENTS_SET = "agents:custom"
+
+STRATEGY_REGISTRY = {
+    cls.name: cls for cls in (Generalist, Undercutter, Premium, Specialist, Manager, Lowballer)
+}
 
 HIGH_IMPACT = {
     "kill_top_agent": "Force-bankrupt the market's top agent (the shock)",
@@ -90,6 +108,109 @@ async def set_reserve(body: ReserveRequest):
     settings.reserve_price = max(0.0, body.price)
     await events.emit("reserve_price", {"price": settings.reserve_price})
     return {"status": "ok", "reserve_price": settings.reserve_price}
+
+
+# --- Arena: human-fielded OpenRouter agents ------------------------------------
+
+
+class CustomAgentRequest(BaseModel):
+    name: str
+    model: str  # OpenRouter catalog id, e.g. anthropic/claude-haiku-4.5
+    strategy: str = "generalist"
+    stake: float = 100.0
+
+
+@router.post("/register_custom_agent")
+async def register_custom_agent(body: CustomAgentRequest):
+    if not settings.openrouter_api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="OPENROUTER_API_KEY not configured — the Arena is offline",
+        )
+    r = get_redis()
+    if await r.scard(CUSTOM_AGENTS_SET) >= settings.max_custom_agents:
+        raise HTTPException(
+            status_code=503,
+            detail=f"arena full — max {settings.max_custom_agents} fielded agents",
+        )
+    strategy_cls = STRATEGY_REGISTRY.get(body.strategy.lower())
+    if strategy_cls is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unknown strategy '{body.strategy}' — one of {sorted(STRATEGY_REGISTRY)}",
+        )
+    if not (settings.custom_stake_min <= body.stake <= settings.custom_stake_max):
+        raise HTTPException(
+            status_code=400,
+            detail=f"stake must be {settings.custom_stake_min}–{settings.custom_stake_max}",
+        )
+    if "/" not in body.model:
+        raise HTTPException(
+            status_code=400, detail="model must be an OpenRouter id (org/model)"
+        )
+
+    # slugified, visually distinct in the graph
+    name = re.sub(r"[^a-z0-9-]+", "-", body.name.lower()).strip("-") or "agent"
+    if not name.startswith("you-"):
+        name = f"you-{name}"
+
+    market = await ensure_market()
+    if name in market.workers:
+        raise HTTPException(status_code=409, detail=f"agent '{name}' already fielded")
+
+    rng = random.Random(settings.rng_seed + await r.incr("market:custom_counter"))
+    niche: str | None = None
+    if strategy_cls is Specialist:
+        niche = rng.choice(sorted(SPECIALIST_PROFILES))
+        strategy = Specialist(rng, niche)
+    else:
+        strategy = strategy_cls(rng)
+
+    worker = Worker(name, strategy=strategy, model=body.model)
+    worker.market = market
+    worker.skill_text = (
+        SPECIALIST_PROFILES[niche]
+        if niche
+        else f"Human-fielded challenger agent running {body.model}. "
+        "Competes on any topic, any category."
+    )
+    market.workers[name] = worker
+    await registry.register_agent(
+        name, name, worker.display_tier, strategy.name, balance=body.stake
+    )
+    await r.sadd(CUSTOM_AGENTS_SET, name)
+    await matching.index_agent_skills(name, worker.skill_text)
+    await events.emit(
+        "agent_registered",
+        {
+            "agent_id": name,
+            "name": name,
+            "model_tier": worker.display_tier,
+            "strategy": strategy.name,
+            "custom": True,
+            "stake": body.stake,
+            **({"niche": niche} if niche else {}),
+        },
+    )
+    return {"status": "fielded", "agent_id": name, "model": body.model, "niche": niche}
+
+
+@router.delete("/custom_agents")
+async def remove_custom_agents():
+    """Kill switch: drain and deregister every human-fielded agent."""
+    r = get_redis()
+    market = await ensure_market()
+    removed = []
+    for agent_id in sorted(await r.smembers(CUSTOM_AGENTS_SET)):
+        await r.hset(f"agent:{agent_id}", "status", "retired")
+        await r.srem(registry.AGENTS_SET, agent_id)
+        await r.srem(CUSTOM_AGENTS_SET, agent_id)
+        await matching.remove_agent_skills(agent_id)
+        market.workers.pop(agent_id, None)
+        removed.append(agent_id)
+    if removed:
+        await events.emit("custom_agents_removed", {"agents": removed})
+    return {"status": "removed", "agents": removed}
 
 
 # --- high-impact: AG-UI approval loop -----------------------------------------

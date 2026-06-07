@@ -64,6 +64,14 @@ class Agent:
             # capacity is priced, not blocked: a loaded agent quotes overtime.
             # this is what makes demand spikes visibly move the market.
             price *= settings.busy_surge
+        if settings.lessons_enabled:
+            # self-improvement, deterministic channel: a rough patch of
+            # referee scores makes the agent price more humbly
+            from canopy.agents.lessons import recent_mean_score
+
+            mean = await recent_mean_score(self.id)
+            if mean is not None:
+                price *= 0.85 + 0.15 * mean
         price = min(max(price, settings.reserve_price), job.bounty_cap)
         reputation = await registry.get_reputation(self.id)
         return Bid(

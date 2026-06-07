@@ -58,3 +58,61 @@ async def fund_fork(parent_id: str, child_id: str) -> None:
     await ledger.debit(parent_id, settings.starting_balance)
     await ledger.record(parent_id, child_id, settings.starting_balance, "", "fork_funding")
     await events.emit("fork", {"parent_id": parent_id, "child_id": child_id})
+
+
+# --- reward-hacking police: strikes → conviction --------------------------------
+
+
+@weave.op
+async def record_strike(
+    agent_id: str, job: "object", judge_score: float, holdout: str, detail: str
+) -> bool:
+    """Judge passed, holdout failed → a strike. At the threshold: conviction —
+    reputation slashed (through the reputation module: a recorded penalty
+    score, not a side-channel write), payment clawed back, frauds += 1.
+    Returns True when this strike produced a conviction."""
+    from canopy.market.reputation import update_reputation  # local: avoid cycle
+
+    r = get_redis()
+    strikes = await r.incr(f"strikes:{agent_id}")
+    await events.emit(
+        "audit_failed",
+        {
+            "job_id": job.id,
+            "agent_id": agent_id,
+            "judge_score": judge_score,
+            "holdout": holdout,
+            "detail": detail,
+        },
+    )
+    if strikes < settings.fraud_strike_threshold:
+        return False
+
+    # conviction
+    await r.delete(f"strikes:{agent_id}")  # repeat offenses start a fresh count
+    old_rep = float(await r.hget(f"agent:{agent_id}", "reputation") or 0.5)
+    # the slash is a recorded penalty score through the EMA — drive the
+    # reputation down by ~fraud_rep_slash via repeated zero-score updates
+    new_rep = old_rep
+    while old_rep - new_rep < settings.fraud_rep_slash and new_rep > 0.05:
+        new_rep = await update_reputation(agent_id, 0.0)
+    clawback = float(job.escrow_amount or 0.0)
+    if clawback > 0:
+        await ledger.debit(agent_id, clawback)
+        await ledger.credit(job.client_id, clawback)
+        await ledger.record(agent_id, job.client_id, clawback, job.id, "clawback")
+    frauds = await r.hincrby(f"agent:{agent_id}", "frauds", 1)
+    await events.emit(
+        "fraud_detected",
+        {
+            "agent_id": agent_id,
+            "job_id": job.id,
+            "strikes": settings.fraud_strike_threshold,
+            "rep_slash": round(old_rep - new_rep, 4),
+            "clawback": round(clawback, 4),
+            "reason": f"{settings.fraud_strike_threshold} holdout failures",
+            "frauds": frauds,
+        },
+    )
+    await check_bankruptcy(agent_id)  # the clawback may be lethal
+    return True

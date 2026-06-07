@@ -65,5 +65,23 @@ class Settings(BaseSettings):
     worker_max_tokens: int = 600
     analyst_max_tokens: int = 2500  # the HTML/SVG market report
 
+    # --- reward-hacking police (holdout audits) ---
+    fraud_strike_threshold: int = 2
+    fraud_rep_slash: float = 0.3  # reported delta target; actual via rep EMA
+    holdout_paraphrase_rate: float = 0.25  # sample rate for the paraphrase check
+    hacker_enabled: bool = True  # seed the criminal in scenarios
+
+    # --- self-improvement loop (lessons from Weave feedback) ---
+    lessons_enabled: bool = True
+    lessons_max: int = 5
+    lesson_max_tokens: int = 60
+
+    # --- Arena: human-fielded OpenRouter agents ---
+    openrouter_api_key: str = ""  # feature off when empty
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    max_custom_agents: int = 6
+    custom_stake_min: float = 10.0
+    custom_stake_max: float = 500.0
+
 
 settings = Settings()

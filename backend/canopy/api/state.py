@@ -7,6 +7,7 @@ Stream, prices ZSETs, the leaderboard ZSET.
 """
 import json
 
+from canopy.agents.lessons import get_lessons
 from canopy.config import settings
 from canopy.market.events import EVENTS_STREAM
 from canopy.market.ledger import LEDGER_STREAM
@@ -40,6 +41,10 @@ async def market_snapshot() -> dict:
                 "jobs_won": int(a.get("jobs_won", 0)),
                 "jobs_failed": int(a.get("jobs_failed", 0)),
                 "parent_id": a.get("parent_id", "") or None,
+                # police: audit convictions (NOT strike count)
+                "frauds": int(a.get("frauds", 0)),
+                # self-improvement: distilled Weave feedback, newest LAST
+                "lessons": await get_lessons(a["id"]),
             }
         )
     agents.sort(key=lambda a: -a["reputation"])

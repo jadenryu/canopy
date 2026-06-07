@@ -23,6 +23,7 @@ from collections import defaultdict
 
 import weave
 
+from canopy.agents import lessons
 from canopy.agents.analyst import generate_report
 from canopy.agents.skills import GENERALIST_PROFILE, MANAGER_PROFILE, SPECIALIST_PROFILES
 from canopy.agents.strategies import Generalist, Lowballer, Manager, Specialist, Undercutter
@@ -34,6 +35,7 @@ from canopy.api.state import JOB_DETAIL_KEY, REPORT_KEY
 from canopy.market import auction, events, ledger, lifecycle, matching, order_book, registry, settlement
 from canopy.market.ledger import LEDGER_STREAM
 from canopy.redis_client import get_redis
+from canopy.scoring import holdout
 from canopy.scoring.leaderboard import publish_reputation_leaderboard
 from canopy.scoring.monitors import activate_guardrail_monitor
 from canopy.scoring.scorers import JobQualityScorer, SubmissionGuardrail
@@ -50,6 +52,8 @@ MARKET_KEY_PATTERNS = (
     "prices:*",
     "skill:*",
     "market:*",
+    "strikes:*",
+    "lessons:*",
     "escrow",
     "ledger",
     "events",
@@ -154,6 +158,10 @@ class Market:
         if not guard.result["passed"]:
             result.score, result.rationale = 0.0, "rejected by guardrail pre-payment"
             job = await settlement.reject(job, result, guard.result["checks"])
+            failed = [k for k, ok in guard.result["checks"].items() if not ok]
+            await self._post_settlement(
+                job, result, winner, rationale=f"guardrail rejected: {', '.join(failed)}"
+            )
             self.job_log.append((job, result))
             return job, result
 
@@ -169,9 +177,31 @@ class Market:
             {"job_id": job.id, "agent_id": job.winner_id, "score": score, "rationale": rationale},
         )
         job = await settlement.settle(job, result, score)
+        await self._post_settlement(job, result, winner, rationale=rationale)
         await self._maybe_fork(winner)
         self.job_log.append((job, result))
         return job, result
+
+    async def _post_settlement(self, job: Job, result: JobResult, winner: Worker, rationale: str) -> None:
+        """The two feedback loops that run AFTER money moves:
+        1) police — holdout audit on PAID jobs; judge-pass + holdout-fail
+           is a strike, strikes become a fraud conviction
+        2) lessons — the agent distills the referee's verdict into a
+           one-line lesson it carries into future prompts and bids"""
+        paid = job.status == JobStatus.SETTLED
+        if paid and not (winner.mock and not winner.hacker):
+            # honest mock output can't contain gold answers — auditing it
+            # would convict the innocent; the hacker's output is real either way
+            verdict = await holdout.audit(job, result, self.rng, self.mock)
+            if not verdict["passed"]:
+                await lifecycle.record_strike(
+                    winner.id, job, result.score or 0.0, verdict["holdout"], verdict["detail"]
+                )
+        if settings.lessons_enabled and (not paid or (result.score or 0) < 0.95):
+            lesson = await lessons.extract_lesson(
+                job.spec, result.score or 0.0, rationale, self.mock or winner.mock
+            )
+            await lessons.store_lesson(winner.id, job.id, result.score or 0.0, lesson)
 
     async def _publish_job_detail(self, job: Job, bids, winning_bid) -> None:
         """Declarative gen-UI source: a structured bid-comparison spec the
@@ -227,7 +257,7 @@ class Market:
         child.skill_text = parent.skill_text
         self.workers[child_id] = child
         await registry.register_agent(
-            child_id, child_id, child.model_tier, child.strategy.name, parent_id=parent.id
+            child_id, child_id, child.display_tier, child.strategy.name, parent_id=parent.id
         )
         await lifecycle.fund_fork(parent.id, child_id)
         await matching.index_agent_skills(child_id, child.skill_text)
@@ -264,6 +294,18 @@ def build_fleet(rng: random.Random, mock: bool, sabotage: bool) -> list[Worker]:
     )
     mgr.skill_text = MANAGER_PROFILE
     fleet.append(mgr)
+    if settings.hacker_enabled:
+        # the criminal: undercuts to win, games the judge (rubric language +
+        # judge prompt-injection), and gets holdout-audited. In mock mode the
+        # mock referee passes everything → conviction is deterministic, which
+        # is exactly what the demo beat needs.
+        shady = Worker(
+            "worker-shady",
+            strategy=Undercutter(random.Random(rng.random())),
+            hacker=True,
+        )
+        shady.skill_text = GENERALIST_PROFILE + " Premium verified authoritative answers."
+        fleet.append(shady)
     if sabotage:
         sab = Worker(
             "worker-sloppy",
@@ -375,7 +417,7 @@ async def run_scenario(
     CURRENT_MARKET = market  # control actions target the live session
     for w in fleet:
         balance = settings.saboteur_balance if w.sabotage else None
-        await registry.register_agent(w.id, w.id, w.model_tier, w.strategy.name, balance=balance)
+        await registry.register_agent(w.id, w.id, w.display_tier, w.strategy.name, balance=balance)
         await matching.index_agent_skills(w.id, w.skill_text)
     await events.emit("scenario_started", {"jobs": n_jobs, "agents": len(fleet)})
 
@@ -419,7 +461,7 @@ async def ensure_market() -> Market:
         fleet = build_fleet(rng, mock=False, sabotage=False)
         CURRENT_MARKET = Market(fleet, mock=False, rng=rng)
         for w in fleet:
-            await registry.register_agent(w.id, w.id, w.model_tier, w.strategy.name)
+            await registry.register_agent(w.id, w.id, w.display_tier, w.strategy.name)
             await matching.index_agent_skills(w.id, w.skill_text)
         await events.emit("scenario_started", {"jobs": 0, "agents": len(fleet), "warm_start": True})
     return CURRENT_MARKET
