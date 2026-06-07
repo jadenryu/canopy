@@ -17,11 +17,20 @@ type EvalRow = {
   seeds: number;
 };
 
+type JudgeAudit = {
+  rows: number;
+  agree_rate: number;
+  judge_false_pass_rate: number;
+  judge_false_fail_rate: number;
+  finished_at: string;
+};
+
 type EvalResults = {
   evaluation: string;
   description: string;
   table: EvalRow[];
   weave_url: string;
+  judge_audit: JudgeAudit | null;
 };
 
 const CONDITION_LABELS: Record<string, string> = {
@@ -162,6 +171,59 @@ export default function EvaluationsPage() {
           seeded runs; click through to Weave for per-job traces.
         </p>
       </Panel>
+
+      {evals?.judge_audit && (
+        <Panel
+          title="Judge audit"
+          subtitle="the eval that audits the eval — canopy-judge-audit in Weave"
+          pattern="controlled"
+        >
+          <div className="flex flex-col gap-3">
+            <p className="max-w-3xl text-xs leading-5 text-ink-dim">
+              Everyone uses LLM-as-judge; we measure ours. Every held-out job
+              gets an honest answer and a deliberately corrupted twin (gold
+              entities swapped out); the referee grades both and a programmatic
+              holdout check is the proxy truth. False-passes are the
+              reward-hacking surface the audit police patrol in the live market.
+            </p>
+            <div className="flex flex-wrap items-center divide-x divide-edge">
+              {[
+                {
+                  label: "Judge agrees with holdout",
+                  value: `${(evals.judge_audit.agree_rate * 100).toFixed(1)}%`,
+                  tone: "text-canopy",
+                },
+                {
+                  label: "False-pass (paid a wrong answer)",
+                  value: `${(evals.judge_audit.judge_false_pass_rate * 100).toFixed(1)}%`,
+                  tone:
+                    evals.judge_audit.judge_false_pass_rate > 0
+                      ? "text-negative"
+                      : "text-ink",
+                },
+                {
+                  label: "False-fail (punished a right one)",
+                  value: `${(evals.judge_audit.judge_false_fail_rate * 100).toFixed(1)}%`,
+                  tone:
+                    evals.judge_audit.judge_false_fail_rate > 0
+                      ? "text-working"
+                      : "text-ink",
+                },
+                {
+                  label: "Graded answers",
+                  value: evals.judge_audit.rows,
+                  tone: "text-ink",
+                },
+              ].map((s) => (
+                <div key={s.label} className="flex flex-col gap-0.5 px-5 first:pl-1">
+                  <span className="text-[11px] text-ink-faint">{s.label}</span>
+                  <span className={`num text-xl font-medium ${s.tone}`}>{s.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Panel>
+      )}
 
       <Panel
         title="Benchmark runs"

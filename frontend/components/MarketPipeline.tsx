@@ -143,6 +143,18 @@ function JobCard({
       {stage === "done" && outcome && (
         <div className="mt-2 flex items-center gap-1.5 border-t border-edge/60 pt-1.5 text-[10px]">
           <span className={outcome.cls}>{outcome.text}</span>
+          {job.trace_url && (
+            <a
+              href={job.trace_url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-ink-faint hover:text-canopy"
+              title="execution trace in Weave"
+            >
+              trace ↗
+            </a>
+          )}
           {winner && (
             <button
               onClick={(e) => {

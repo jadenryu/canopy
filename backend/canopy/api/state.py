@@ -74,6 +74,12 @@ async def market_snapshot() -> dict:
                 "price": j.get("escrow_amount", 0.0),
                 "parent_job_id": j.get("parent_job_id"),
                 "open": j["id"] in open_ids,
+                "trace_url": (
+                    f"https://wandb.ai/{settings.weave_entity}/{settings.weave_project}"
+                    f"/r/call/{j['trace_id']}"
+                )
+                if j.get("trace_id")
+                else None,
                 "bids": [
                     {"agent_id": aid, "effective_bid": round(eff, 3)} for aid, eff in bids
                 ],

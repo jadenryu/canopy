@@ -153,6 +153,7 @@ class Market:
             result, exec_call = await winner.execute_job.call(winner, job)
         finally:
             winner.busy_jobs -= 1
+        job.trace_id = getattr(exec_call, "id", None)  # judge-facing trace link
 
         # solo workers burn model cost per hop; a manager's costs are the
         # real escrow payments to its subcontractors (already debited)

@@ -81,6 +81,8 @@ async def integrations():
 
 @router.get("/eval/results")
 async def eval_results():
+    r = get_redis()
+    judge_audit_raw = await r.get("eval:judge_audit")
     runs: dict = {}
     if CHECKPOINT.exists():
         runs = json.loads(CHECKPOINT.read_text())
@@ -106,6 +108,7 @@ async def eval_results():
     table.sort(key=lambda x: -x["quality_per_dollar"])
     weave_base = f"https://wandb.ai/{settings.weave_entity}/{settings.weave_project}"
     return {
+        "judge_audit": json.loads(judge_audit_raw) if judge_audit_raw else None,
         "evaluation": "canopy-allocator-eval",
         "description": "25 held-out jobs (incl. unseen category), 3 seeds, identical fleet/scorer/lifecycle — only the assignment rule differs. Two saboteur agents in every fleet.",
         "table": table,

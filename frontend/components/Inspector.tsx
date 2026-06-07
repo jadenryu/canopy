@@ -178,6 +178,19 @@ export function JobSheet({
           </SheetDescription>
         </SheetHeader>
 
+        {job.trace_url && (
+          <div className="px-4">
+            <a
+              href={job.trace_url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex w-full items-center justify-center gap-1.5 rounded-md border border-edge px-3 py-1.5 text-xs text-ink-dim transition-colors hover:border-canopy/50 hover:text-canopy"
+            >
+              View execution trace in Weave ↗
+            </a>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2 px-4">
           <Stat label="category" value={`${job.category}${job.hops >= 3 ? " ★3-hop" : ""}`} />
           <Stat label="client" value={job.client_id} />

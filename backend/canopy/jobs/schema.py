@@ -31,6 +31,7 @@ class Job(BaseModel):
     parent_job_id: str | None = None
     depth: int = 0
     ground_truth: str | None = None  # held-out answer for eval; never shown to workers
+    trace_id: str | None = None  # Weave call id of the execution — judge-facing proof
 
 
 class Bid(BaseModel):

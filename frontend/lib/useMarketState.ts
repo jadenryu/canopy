@@ -43,6 +43,7 @@ export type JobRow = {
   price: number;
   parent_job_id: string | null;
   open: boolean;
+  trace_url: string | null; // the execution call in Weave — proof on demand
   bids: BidRow[];
 };
 
