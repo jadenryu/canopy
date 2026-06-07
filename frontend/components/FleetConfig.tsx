@@ -57,13 +57,18 @@ export function FleetConfig({
       { model: allModels[0] ?? "gpt-5.4-nano", strategy: "generalist", stake: 100 },
     ]);
 
+  const [error, setError] = useState<string | null>(null);
+
   const run = async () => {
     setBusy(true);
+    setError(null);
     try {
       const body: Record<string, unknown> = { jobs, preset, sabotage: preset === "emergence" };
       if (preset === "custom") body.fleet = custom;
       await onRun(body);
-      onClose();
+      onClose(); // only close on success
+    } catch (e) {
+      setError((e as Error).message); // keep the sheet open, show why
     } finally {
       setBusy(false);
     }
@@ -187,6 +192,11 @@ export function FleetConfig({
           >
             {busy ? "Starting…" : "Run scenario"}
           </button>
+          {error && (
+            <p className="rounded-md border border-negative/40 bg-negative/10 px-3 py-2 text-[11px] text-negative">
+              {error}
+            </p>
+          )}
         </div>
       </SheetContent>
     </Sheet>

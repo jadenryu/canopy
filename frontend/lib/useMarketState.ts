@@ -152,6 +152,24 @@ export async function runScenarioBody(body: Record<string, unknown>) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ job_delay: 1.0, ...body }),
   });
+  // surface backend errors (409 already-running, 400 bad fleet, 503 no key)
+  // instead of silently swallowing them — the cause of "it just doesn't start"
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw new Error(detail?.detail ?? `request failed (${res.status})`);
+  }
+  return res.json();
+}
+
+// Wipe the market back to an empty board (cancels any in-flight run).
+// Each run already starts with the same wipe, so runs never bleed into
+// each other — this just lets the user clear the board on demand.
+export async function resetScenario() {
+  const res = await fetch(`${BACKEND}/sim/reset`, { method: "POST" });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw new Error(detail?.detail ?? `reset failed (${res.status})`);
+  }
   return res.json();
 }
 

@@ -520,11 +520,17 @@ async def run_scenario(
     await events.emit("scenario_started", {"jobs": n_jobs, "agents": len(fleet)})
 
     for job in seed_jobs(n_jobs, rng):
-        done, result = await market.run_job(job)
-        print(
-            f"{done.id}  status={done.status:<9} winner={done.winner_id} "
-            f"price={done.escrow_amount:.2f} score={result.score if result else None}"
-        )
+        try:
+            done, result = await market.run_job(job)
+            print(
+                f"{done.id}  status={done.status:<9} winner={done.winner_id} "
+                f"price={done.escrow_amount:.2f} score={result.score if result else None}"
+            )
+        except Exception as exc:  # noqa: BLE001
+            # one bad job (e.g. an OpenRouter model erroring) must not abort
+            # the whole scenario — log it, emit a failure event, keep going
+            print(f"{job.id}  ERROR: {exc!r}")
+            await events.emit("failed", {"job_id": job.id, "reason": f"error: {exc}"})
         if job_delay:
             await asyncio.sleep(job_delay)
 

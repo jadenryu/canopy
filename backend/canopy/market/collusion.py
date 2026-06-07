@@ -11,6 +11,8 @@ Deliberately simple per spec §10: a detector + a recorded penalty, not a
 general mechanism-design solution. The point is to acknowledge the
 pathology and show the market has a guard.
 """
+import json
+
 import weave
 
 from canopy.config import settings
@@ -26,23 +28,23 @@ async def scan_collusion() -> list[dict]:
     """Find reciprocal payment loops above the volume threshold; penalize new
     ones. Returns the pairs flagged this scan."""
     r = get_redis()
+    # escrow_release is from "escrow"; the paying CLIENT is the job's
+    # client — reconstruct via the job_id's client when it's an agent
+    releases = [
+        f
+        for _id, f in await r.xrange("ledger", count=5000)
+        if f.get("type") == "escrow_release" and f.get("job_id")
+    ]
+    job_ids = sorted({f["job_id"] for f in releases})
+    raws = await r.mget([f"job:{jid}" for jid in job_ids]) if job_ids else []
+    jobs = {jid: json.loads(raw) for jid, raw in zip(job_ids, raws) if raw}
+
     # pair (sorted) -> {a->b: amount, b->a: amount}
     flows: dict[tuple[str, str], dict[str, float]] = {}
-    for _id, f in await r.xrange("ledger", count=5000):
-        if f.get("type") != "escrow_release":
+    for f in releases:
+        job = jobs.get(f["job_id"])
+        if not job:
             continue
-        src, dst = f.get("from"), f.get("to")
-        # escrow_release is from "escrow"; the paying CLIENT is the job's
-        # client — reconstruct via the job_id's client when it's an agent
-        job_id = f.get("job_id", "")
-        if not job_id:
-            continue
-        raw = await r.get(f"job:{job_id}")
-        if not raw:
-            continue
-        import json
-
-        job = json.loads(raw)
         client, worker = job.get("client_id"), job.get("winner_id")
         if not client or not worker or client == "human" or client == worker:
             continue  # only agent→agent subcontract payments can collude

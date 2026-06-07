@@ -148,7 +148,11 @@ export default function Home() {
             settlements — all live on this page.
           </p>
           <button
-            onClick={() => runScenario({ jobs: 13, mock: false })}
+            onClick={() =>
+              runScenario({ jobs: 13, mock: false }).catch((e) =>
+                alert((e as Error).message)
+              )
+            }
             className="rounded-md bg-canopy px-4 py-2 text-xs font-medium text-[#06241a] transition-opacity hover:opacity-90"
           >
             Run scenario

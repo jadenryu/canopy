@@ -6,6 +6,7 @@ the bounty into escrow and closes the job in the order book.
 """
 import weave
 
+from canopy.config import settings
 from canopy.jobs.schema import Bid, Job, JobStatus
 from canopy.market import escrow, events, order_book
 

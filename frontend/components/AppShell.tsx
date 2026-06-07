@@ -22,7 +22,12 @@ import {
 } from "react";
 
 import { useSession } from "@/lib/session";
-import { control, runScenarioBody, useMarketState } from "@/lib/useMarketState";
+import {
+  control,
+  resetScenario,
+  runScenarioBody,
+  useMarketState,
+} from "@/lib/useMarketState";
 import { FleetConfig } from "./FleetConfig";
 
 // Light is the default; "dark" in localStorage flips the palette (the
@@ -217,6 +222,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               }`}
             >
               {paused ? "Resume" : "Pause"}
+            </button>
+            <button
+              onClick={() => {
+                if (confirm("Reset the market? This clears the current run."))
+                  resetScenario().catch((e) => alert(e.message));
+              }}
+              className="rounded-md border border-edge px-3 py-1.5 text-ink-dim transition-colors hover:border-negative/50 hover:text-negative"
+            >
+              Reset
             </button>
             <button
               onClick={() => setConfigOpen(true)}

@@ -10,7 +10,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from canopy.config import settings
-from canopy.sim.engine import emergence_spec, model_battle_spec, run_scenario
+from canopy.market import events
+from canopy.sim.engine import emergence_spec, model_battle_spec, reset_market, run_scenario
 
 router = APIRouter()
 
@@ -48,6 +49,16 @@ def _resolve_fleet(body: SimRunRequest) -> list[dict] | None:
     return None  # emergence preset → engine default
 
 
+def _on_done(task: asyncio.Task) -> None:
+    """A scenario task that dies (bad fleet, OpenRouter outage, Redis blip)
+    must not fail silently — log it and surface it on the event bus."""
+    if task.cancelled() or task.exception() is None:
+        return
+    exc = task.exception()
+    print(f"[canopy] scenario failed: {exc!r}")
+    asyncio.create_task(events.emit("scenario_failed", {"error": str(exc) or repr(exc)}))
+
+
 @router.post("/sim/run")
 async def sim_run(body: SimRunRequest):
     global _task
@@ -63,7 +74,30 @@ async def sim_run(body: SimRunRequest):
             fleet_spec=fleet_spec,
         )
     )
+    _task.add_done_callback(_on_done)
     return {"status": "started", "jobs": body.jobs, "preset": body.preset}
+
+
+@router.post("/sim/reset")
+async def sim_reset():
+    """Wipe the board back to an empty market. Cancels any in-flight
+    scenario first, then does the same scoped key wipe every run starts
+    with — so a reset and a fresh run leave Redis in identical states.
+    The market_reset event (emitted AFTER the wipe, so it's the only
+    entry in the fresh events stream) nudges the AG-UI bridge into
+    pushing an empty snapshot to every connected client."""
+    global _task
+    cancelled = False
+    if _task is not None and not _task.done():
+        _task.cancel()
+        try:
+            await _task
+        except asyncio.CancelledError:
+            cancelled = True
+    _task = None
+    await reset_market()
+    await events.emit("market_reset", {"cancelled_run": cancelled})
+    return {"status": "reset", "cancelled_run": cancelled}
 
 
 @router.get("/sim/presets")

@@ -15,6 +15,7 @@ const MAJOR = new Set([
   "fork",
   "fraud_detected",
   "collusion_flagged",
+  "scenario_failed",
   "scenario_started",
   "scenario_finished",
 ]);
@@ -60,6 +61,7 @@ const EVENT_DOT: Record<string, string> = {
   custom_agents_removed: "bg-ink-faint",
   collusion_flagged: "bg-negative",
   chat: "bg-ink-faint",
+  scenario_failed: "bg-negative",
 };
 
 function dotClass(type: string): string {
@@ -113,6 +115,8 @@ function summarize(e: MarketEvent): string {
       return `scenario started — ${p.jobs} jobs, ${p.agents} agents`;
     case "scenario_finished":
       return "scenario complete";
+    case "scenario_failed":
+      return `scenario failed — ${p.error}`;
     case "report_ready":
       return "analyst report filed";
     case "bench_run_started":
