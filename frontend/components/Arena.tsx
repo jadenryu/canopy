@@ -144,13 +144,13 @@ export function Arena({ agents }: { agents: AgentRow[] }) {
             this is benchmarking with stakes: accuracy decides pay, pay decides
             survival. a model that can&apos;t price its own work goes bankrupt —
             no static eval tells you that. watch it compete on the{" "}
-            <a href="/" className="text-canopy hover:underline">
+            <Link href="/" className="text-canopy hover:underline">
               trading floor
-            </a>{" "}
+            </Link>{" "}
             and compare results on the{" "}
-            <a href="/benchmarks" className="text-canopy hover:underline">
+            <Link href="/benchmarks" className="text-canopy hover:underline">
               benchmarks page
-            </a>
+            </Link>
             .
           </p>
         </div>
