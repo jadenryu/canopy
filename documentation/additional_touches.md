@@ -1,17 +1,9 @@
-looking at the website, its coming together. i have a few more touch ups and features i want to add.
+rvery stat/graph should be clickalbe. rn i see that only volume is clickalbe. first, delete the fac tthat it says to click, users should figure that 
+out on their own. this same clickability for more detila should be applied ot everything. i literally mean 90% of everything the use sees hsould be 
+clickalbe to reveal more technical information. 
 
-first, users should be able to select the entire range of agents battling against each other before running a scenario. fully customizable.
-additionally, custom agents should be able to be added in to the battle even if its going on (next round entry). additionally, agents should 
-be able to access their own memory (past messages), and add toward a sort of group chat, where all agents can chat together after each round and say
-something. lmk if thats a cool feature 
+in the open auction section, users should be able to see the models actively bidding, rn the only thing that shows is agent s are bidding.
+plus the model battle feature for run scneario still uses specialist agents. fix this.
 
-the clearing prices tab is a bit confusing. a stronger, more modern design may be better here to improve UX, user accessibility, user understanding,
-and highlight technical depth. 
 
-agents are still called workers, but we are unsure of what model is underneath them.
-
-also, each statistic, graph, and container should be interactive. (ex. clicking volume on trading floor shows bids of each agent, and maybe
-even their previous bids). this is important. add this to contianers like activity nad others as well. 
-
-question types are split by domain, but if we use llms as the base model with no system prompt, the query types should be aong the lines
-of single hop, multi hop, comparative, unanswerable, no? lmk.
+in arena rather than adding it to the exsiting run, users should also have the ability to choose multiple custom models to fight against each other.

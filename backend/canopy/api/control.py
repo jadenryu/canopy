@@ -205,23 +205,28 @@ async def register_custom_agent(body: CustomAgentRequest):
     market.workers[name] = worker
     await registry.register_agent(
         name, name, worker.display_tier, strategy.name, balance=body.stake,
-        label=f"{body.model} — fielded by you",
+        label=f"{body.model} — fielded by you", model=body.model,
     )
     await r.sadd(CUSTOM_AGENTS_SET, name)
     await matching.index_agent_skills(name, worker.skill_text)
+    # mid-run join: open jobs in the book → a scenario is live and the very
+    # next auction (run_job reads actives fresh) will include this agent
+    mid_run = bool(await r.zcard("jobs:open"))
     await events.emit(
         "agent_registered",
         {
             "agent_id": name,
             "name": name,
+            "model": body.model,
             "model_tier": worker.display_tier,
             "strategy": strategy.name,
             "custom": True,
+            "mid_run": mid_run,
             "stake": body.stake,
             **({"niche": niche} if niche else {}),
         },
     )
-    return {"status": "fielded", "agent_id": name, "model": body.model, "niche": niche}
+    return {"status": "fielded", "agent_id": name, "model": body.model, "mid_run": mid_run, "niche": niche}
 
 
 @router.delete("/custom_agents")

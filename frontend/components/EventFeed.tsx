@@ -14,6 +14,7 @@ const MAJOR = new Set([
   "bankruptcy",
   "fork",
   "fraud_detected",
+  "collusion_flagged",
   "scenario_started",
   "scenario_finished",
 ]);
@@ -57,6 +58,8 @@ const EVENT_DOT: Record<string, string> = {
   liquidity: "bg-positive",
   reserve_price: "bg-info",
   custom_agents_removed: "bg-ink-faint",
+  collusion_flagged: "bg-negative",
+  chat: "bg-ink-faint",
 };
 
 function dotClass(type: string): string {
@@ -95,7 +98,11 @@ function summarize(e: MarketEvent): string {
     case "lesson_learned":
       return `${p.agent_id} recorded a lesson: ${p.lesson}`;
     case "agent_registered":
-      return `${p.agent_id} joined (${p.strategy})`;
+      return p.mid_run
+        ? `${p.agent_id} entered mid-run (${p.model ?? p.strategy})`
+        : `${p.agent_id} joined (${p.strategy})`;
+    case "collusion_flagged":
+      return `collusion flagged: ${(p.agents as unknown as string[])?.join(" ↔ ")} — reputation slashed`;
     case "shock":
       return `shock injected — ${p.kind}${p.agent_id ? `: ${p.agent_id}` : ""}`;
     case "approval_required":

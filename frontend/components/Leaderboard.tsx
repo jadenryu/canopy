@@ -5,7 +5,13 @@ import { Empty } from "./Empty";
 import { Panel } from "./Panel";
 
 // Reputation ranking — mirrors the published Weave Leaderboard.
-export function Leaderboard({ agents }: { agents: AgentRow[] }) {
+export function Leaderboard({
+  agents,
+  onSelectAgent,
+}: {
+  agents: AgentRow[];
+  onSelectAgent?: (id: string) => void;
+}) {
   return (
     <Panel
       title="Reputation"
@@ -22,9 +28,10 @@ export function Leaderboard({ agents }: { agents: AgentRow[] }) {
             return (
               <div
                 key={a.id}
+                onClick={() => onSelectAgent?.(a.id)}
                 className={`flex items-center gap-3 border-b border-edge/50 py-1.5 text-xs last:border-0 ${
                   out ? "opacity-45" : ""
-                }`}
+                } ${onSelectAgent ? "cursor-pointer hover:bg-surface-2/60" : ""}`}
               >
                 <span className="num w-5 text-right text-ink-faint">{i + 1}</span>
                 <span className="w-44 truncate text-ink" title={a.id}>

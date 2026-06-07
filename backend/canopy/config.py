@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     manager_hop_discount: float = 0.7  # manager's est cost = hops * cheap_cost * this
     manager_min_hops: int = 3  # managers only bid on jobs this complex
     failure_penalty: float = 10.0  # balance slash on rejection / failed settle
+    collusion_min_volume: float = 3.0  # reciprocal-loop volume (each way) to flag
     saboteur_balance: float = 25.0  # demo saboteur starts poor → fast bankruptcy
     busy_surge: float = 1.6  # busy agents bid at a premium (capacity pricing)
     spike_stagger: float = 2.5  # seconds between demand-spike job posts

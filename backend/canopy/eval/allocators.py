@@ -52,13 +52,12 @@ class BaselineAllocator:
         self.rng = rng
         self._rr = 0
         # fixed agents for the single-agent baselines — a chosen fixed agent
-        # is never a saboteur (you'd vet the one agent you hire) nor a manager
-        self.cheap = next(
-            w for w in fleet if w.model_tier == "cheap" and not w.is_manager and not w.sabotage
-        )
-        self.premium = next(
-            w for w in fleet if w.model_tier == "premium" and not w.is_manager and not w.sabotage
-        )
+        # is never a saboteur (you'd vet the one agent you hire) nor a manager.
+        # Resolved lazily (None when the fleet has none) so round_robin/random
+        # work on fleets without a dedicated premium worker.
+        vetted = [w for w in fleet if not w.is_manager and not w.sabotage]
+        self.cheap = next((w for w in vetted if w.model_tier == "cheap"), None)
+        self.premium = next((w for w in vetted if w.model_tier == "premium"), None)
 
     @weave.op
     async def assign(self, job: Job) -> Bid:

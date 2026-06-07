@@ -524,6 +524,8 @@ async def run_scenario(
         if job_delay:
             await asyncio.sleep(job_delay)
 
+    from canopy.market.collusion import scan_collusion
+    await scan_collusion()  # anti-collusion: flag reciprocal self-dealing loops
     await chat.round_chat(mock)  # agents react to the round, from memory
     await _publish_report(market)
 

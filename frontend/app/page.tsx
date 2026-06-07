@@ -194,7 +194,7 @@ export default function Home() {
         <TabsContent value="floor" className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <PriceCards prices={state?.prices ?? {}} />
           <BidLeaderboard agents={agents} jobs={jobs} onSelectAgent={selectAgent} />
-          <Leaderboard agents={agents} />
+          <Leaderboard agents={agents} onSelectAgent={selectAgent} />
           <Wallets agents={agents} />
           <FloorChat messages={state?.chat ?? []} onSelectAgent={selectAgent} />
           <div className="lg:col-span-2">
