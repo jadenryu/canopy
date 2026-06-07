@@ -8,7 +8,7 @@ import { EventFeed } from "@/components/EventFeed";
 import { HiringGraph } from "@/components/HiringGraph";
 import { AgentSheet, JobSheet } from "@/components/Inspector";
 import { Leaderboard } from "@/components/Leaderboard";
-import { MarketFlow } from "@/components/MarketFlow";
+import { MarketPipeline } from "@/components/MarketPipeline";
 import { OrderBook } from "@/components/OrderBook";
 import { PriceChart } from "@/components/PriceChart";
 import { ReportFrame } from "@/components/ReportFrame";
@@ -119,7 +119,7 @@ export default function Home() {
       {/* centerpiece — the flow board + the live activity stream */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <MarketFlow
+          <MarketPipeline
             agents={agents}
             jobs={jobs}
             onSelectAgent={selectAgent}
