@@ -66,6 +66,7 @@ async def market_snapshot() -> dict:
                 "spec": j["spec"],
                 "category": j["category"],
                 "hops": j.get("hops", 2),
+                "bounty_cap": j.get("bounty_cap", 10.0),
                 "status": j["status"],
                 "client_id": j["client_id"],
                 "winner_id": j.get("winner_id"),

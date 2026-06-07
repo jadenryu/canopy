@@ -35,6 +35,7 @@ export type JobRow = {
   spec: string;
   category: string;
   hops: number;
+  bounty_cap: number;
   status: string;
   client_id: string;
   winner_id: string | null;

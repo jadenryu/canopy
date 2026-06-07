@@ -10,7 +10,7 @@ import { EventFeed } from "@/components/EventFeed";
 import { HiringGraph } from "@/components/HiringGraph";
 import { AgentSheet, JobSheet } from "@/components/Inspector";
 import { Leaderboard } from "@/components/Leaderboard";
-import { MarketGraph } from "@/components/MarketGraph";
+import { MarketFlow } from "@/components/MarketFlow";
 import { OrderBook } from "@/components/OrderBook";
 import { PriceChart } from "@/components/PriceChart";
 import { ReportFrame } from "@/components/ReportFrame";
@@ -107,15 +107,6 @@ export default function Home() {
   const settledJobs = jobs.filter((j) => j.status === "settled");
   const volume = settledJobs.reduce((s, j) => s + j.price, 0);
   const bankrupt = agents.filter((a) => a.status === "bankrupt").length;
-  const executing = useMemo(
-    () =>
-      new Set(
-        jobs
-          .filter((j) => j.status === "executing" && j.winner_id)
-          .map((j) => j.winner_id as string)
-      ),
-    [jobs]
-  );
 
   const selectAgent = (id: string) => {
     setJobId(null);
@@ -192,10 +183,9 @@ export default function Home() {
       {/* centerpiece — the network + the live activity stream */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <MarketGraph
+          <MarketFlow
             agents={agents}
             jobs={jobs}
-            executing={executing}
             onSelectAgent={selectAgent}
             onSelectJob={selectJob}
           />
