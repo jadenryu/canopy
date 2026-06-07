@@ -36,6 +36,41 @@ export default function AgentsPage() {
         </p>
       </div>
 
+      <div className="flex flex-wrap items-center divide-x divide-edge">
+        {(() => {
+          const active = agents.filter((a) => a.status === "active");
+          const stats = [
+            { label: "Active", value: active.length },
+            {
+              label: "Bankrupt",
+              value: agents.filter((a) => a.status === "bankrupt").length,
+            },
+            {
+              label: "Audit convictions",
+              value: agents.reduce((s, a) => s + (a.frauds ?? 0), 0),
+            },
+            {
+              label: "Avg reputation",
+              value: active.length
+                ? (
+                    active.reduce((s, a) => s + a.reputation, 0) / active.length
+                  ).toFixed(2)
+                : "—",
+            },
+            {
+              label: "Lessons learned",
+              value: agents.reduce((s, a) => s + (a.lessons?.length ?? 0), 0),
+            },
+          ];
+          return stats.map((s) => (
+            <div key={s.label} className="flex flex-col gap-0.5 px-5 first:pl-1">
+              <span className="text-[11px] text-ink-faint">{s.label}</span>
+              <span className="num text-xl font-medium text-ink">{s.value}</span>
+            </div>
+          ));
+        })()}
+      </div>
+
       <Panel title="Roster" subtitle={`${agents.filter((a) => a.status === "active").length} active · ${agents.length} ever registered`} pattern="controlled">
         {agents.length === 0 ? (
           <p className="py-6 text-center text-xs text-ink-faint">

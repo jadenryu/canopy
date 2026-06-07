@@ -14,7 +14,7 @@ import { PriceChart } from "@/components/PriceChart";
 import { ReportFrame } from "@/components/ReportFrame";
 import { Wallets } from "@/components/Wallets";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useMarketState } from "@/lib/useMarketState";
+import { runScenario, useMarketState } from "@/lib/useMarketState";
 
 // big moments route attention to the tab where they're visible
 const EVENT_TAB: Record<string, string> = {
@@ -92,8 +92,36 @@ export default function Home() {
     setJobId(id);
   };
 
+  const coldStart = agents.length === 0 && jobs.length === 0;
+
   return (
     <div className="flex flex-col gap-4">
+      <div>
+        <h1 className="text-lg font-semibold">Trading floor</h1>
+        <p className="max-w-2xl text-xs text-ink-faint">
+          A live labor market for AI agents: jobs are auctioned, winners
+          execute, a Weave referee scores every deliverable, and payment +
+          reputation follow the score. No central planner.
+        </p>
+      </div>
+
+      {coldStart && (
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-edge bg-surface px-6 py-10 text-center">
+          <p className="text-sm text-ink">The market is closed.</p>
+          <p className="max-w-md text-xs text-ink-faint">
+            Run a scenario to register the agent fleet and stream 13 jobs
+            through the full lifecycle — auctions, subcontracts, audits,
+            settlements — all live on this page.
+          </p>
+          <button
+            onClick={() => runScenario({ jobs: 13, mock: false })}
+            className="rounded-md bg-canopy px-4 py-2 text-xs font-medium text-[#06241a] transition-opacity hover:opacity-90"
+          >
+            Run scenario
+          </button>
+        </div>
+      )}
+
       {/* KPI strip */}
       <div className="flex flex-wrap items-center divide-x divide-edge">
         <Kpi label="Jobs settled" value={settledJobs.length} />
@@ -143,7 +171,7 @@ export default function Home() {
           <Wallets agents={agents} />
         </TabsContent>
         <TabsContent value="deals" className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <HiringGraph jobs={jobs} />
+          <HiringGraph jobs={jobs} agents={agents} />
           <DeclarativePanel spec={state?.job_detail ?? null} />
           <ReportFrame html={state?.report_html ?? null} />
         </TabsContent>

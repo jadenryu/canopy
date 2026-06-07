@@ -13,7 +13,7 @@ export function Panel({
   className = "",
 }: {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   pattern: "controlled" | "declarative" | "open-ended";
   accent?: boolean;
   footer?: ReactNode;

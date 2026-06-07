@@ -69,16 +69,21 @@ export default function Benchmarks() {
   const [runs, setRuns] = useState<BenchResult[] | null>(null);
   const [loaded, setLoaded] = useState(false);
 
+  // poll — a queued run takes seconds-to-minutes and must land unprompted
   useEffect(() => {
     let on = true;
-    fetchBenchRuns().then((r) => {
-      if (on) {
-        setRuns(r);
-        setLoaded(true);
-      }
-    });
+    const load = () =>
+      fetchBenchRuns().then((r) => {
+        if (on) {
+          setRuns(r);
+          setLoaded(true);
+        }
+      });
+    load();
+    const t = setInterval(load, 8000);
     return () => {
       on = false;
+      clearInterval(t);
     };
   }, []);
 
@@ -212,12 +217,8 @@ export default function Benchmarks() {
           {!loaded ? (
             <Empty glyph="◌">loading…</Empty>
           ) : runs === null ? (
-            <Empty
-              glyph="⚙"
-              hint="frontend contract is live; endpoints specced in documentation/human_interaction_backend_plan.md"
-            >
-              results engine pending — runs will land here with accuracy, cost
-              per correct, market share and survival per model
+            <Empty hint="Start the backend (port 8000) to load results.">
+              Backend unreachable
             </Empty>
           ) : runs.length === 0 ? (
             <Empty glyph="◌" hint="queue a run above">
@@ -268,6 +269,13 @@ export default function Benchmarks() {
         </Panel>
       </div>
 
+      <p className="text-[11px] text-ink-faint">
+        Aggregated comparisons live on the{" "}
+        <a href="/evaluations" className="text-canopy hover:underline">
+          Evaluations page
+        </a>
+        ; raw per-question traces in the Weave project.
+      </p>
       <footer className="text-[10px] text-ink-faint">
         every run is a formal weave.Evaluation — same referee scorer that settles
         live trades · models routed through OpenRouter · the market allocator is

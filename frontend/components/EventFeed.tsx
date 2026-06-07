@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { MarketEvent } from "@/lib/useMarketState";
 import { Empty } from "./Empty";
 import { Panel } from "./Panel";
@@ -115,13 +117,42 @@ function summarize(e: MarketEvent): string {
   }
 }
 
+// money-moving / verdict events — what "Key" mode keeps
+const KEY_EVENTS = new Set([
+  ...MAJOR,
+  "awarded",
+  "settled",
+  "rejected",
+  "failed",
+  "penalty",
+  "audit_failed",
+  "lesson_learned",
+  "price_update",
+  "report_ready",
+]);
+
 // The market's activity stream — one line per event, status by indicator.
+// "Key" hides the bid/escrow firehose so the big moments stay readable.
 export function EventFeed({ events }: { events: MarketEvent[] }) {
-  const recent = events.slice(-MAX_ROWS).reverse();
-  const total = events.length;
+  const [keyOnly, setKeyOnly] = useState(false);
+  const visible = keyOnly ? events.filter((e) => KEY_EVENTS.has(e.type)) : events;
+  const recent = visible.slice(-MAX_ROWS).reverse();
+  const total = visible.length;
 
   return (
-    <Panel title="Activity" pattern="controlled" className="h-[26rem]">
+    <Panel
+      title="Activity"
+      pattern="controlled"
+      className="h-[26rem]"
+      subtitle={
+          <button
+            onClick={() => setKeyOnly((k) => !k)}
+            className="pointer-events-auto rounded border border-edge px-1.5 py-0.5 text-[10px] text-ink-dim transition-colors hover:border-edge-2 hover:text-ink"
+          >
+            {keyOnly ? "showing key events" : "showing everything"}
+          </button>
+      }
+    >
       {recent.length === 0 ? (
         <Empty hint="Events stream in once the market opens.">No activity</Empty>
       ) : (

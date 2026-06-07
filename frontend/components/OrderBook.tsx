@@ -9,7 +9,12 @@ import { Panel } from "./Panel";
 export function OrderBook({ jobs }: { jobs: JobRow[] }) {
   const recent = [...jobs].reverse().slice(0, 24);
   return (
-    <Panel title="Order book" pattern="controlled" className="h-72">
+    <Panel
+      title="Order history"
+      subtitle="every job this session, newest first"
+      pattern="controlled"
+      className="h-72"
+    >
       {recent.length === 0 ? (
         <Empty hint="Open orders appear here.">
           No orders yet

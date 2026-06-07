@@ -71,8 +71,9 @@ export function Wallets({ agents }: { agents: AgentRow[] }) {
                   className={`w-32 truncate ${
                     a.status === "bankrupt" ? "text-negative" : ""
                   }`}
+                  title={a.id}
                 >
-                  {a.id}
+                  {a.label || a.id}
                 </span>
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
                   <div

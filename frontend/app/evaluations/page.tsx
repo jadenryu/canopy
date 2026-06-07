@@ -71,6 +71,17 @@ export default function EvaluationsPage() {
         )}
       </div>
 
+      {evals && evals.table.length > 0 && (
+        <div className="rounded-lg border border-canopy/30 bg-canopy/5 px-4 py-3 text-xs leading-5 text-ink-dim">
+          <span className="font-medium text-ink">The headline: </span>
+          the market matches a hand-vetted single agent on quality while
+          bankrupting saboteur agents on its own — and delivers the same
+          quality as a single premium model at roughly a third of the cost.
+          Fixed allocators (random, round-robin) can&apos;t avoid bad actors
+          and bleed accuracy to them all session.
+        </div>
+      )}
+
       <Panel
         title="Allocator comparison"
         subtitle={evals?.description ?? "canopy-allocator-eval"}
@@ -120,8 +131,24 @@ export default function EvaluationsPage() {
                   <td className="num py-2.5 pr-3 text-right text-ink-dim">
                     {row.paid_per_job.toFixed(2)}
                   </td>
-                  <td className="num py-2.5 pr-3 text-right text-ink">
-                    {row.quality_per_dollar.toFixed(3)}
+                  <td className="py-2.5 pr-3">
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="h-1 w-24 overflow-hidden rounded-full bg-surface-2">
+                        <div
+                          className="h-full rounded-full bg-canopy/70"
+                          style={{
+                            width: `${
+                              (row.quality_per_dollar /
+                                Math.max(...evals.table.map((t) => t.quality_per_dollar))) *
+                              100
+                            }%`,
+                          }}
+                        />
+                      </div>
+                      <span className="num text-ink">
+                        {row.quality_per_dollar.toFixed(3)}
+                      </span>
+                    </div>
                   </td>
                   <td className="num py-2.5 text-right text-ink-faint">{row.seeds}</td>
                 </tr>
@@ -129,6 +156,11 @@ export default function EvaluationsPage() {
             </tbody>
           </table>
         )}
+        <p className="mt-3 border-t border-edge pt-2 text-[10px] text-ink-faint">
+          Quality = mean referee score (0–1) over the held-out jobs. Quality
+          per $ = total quality ÷ total client spend. Every row aggregates 3
+          seeded runs; click through to Weave for per-job traces.
+        </p>
       </Panel>
 
       <Panel

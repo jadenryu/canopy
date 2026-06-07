@@ -26,9 +26,17 @@ const COLORS = [
   "#b078c9",
 ];
 
+// "film:h2" → "film · 2-hop" (the raw keys are Redis key suffixes)
+function seriesLabel(key: string): string {
+  const m = key.match(/^(.+):h(\d+)$/);
+  return m ? `${m[1]} · ${m[2]}-hop` : key;
+}
+
 // Controlled gen-UI: clearing-price convergence per (category, hops).
 export function PriceChart({ prices }: { prices: Record<string, number[]> }) {
-  const series = Object.entries(prices).filter(([, v]) => v.length > 0);
+  const series = Object.entries(prices)
+    .filter(([, v]) => v.length > 0)
+    .map(([k, v]) => [seriesLabel(k), v] as [string, number[]]);
   const maxLen = Math.max(0, ...series.map(([, v]) => v.length));
   const data = Array.from({ length: maxLen }, (_, i) => {
     const row: Record<string, number | null> = { tick: i + 1 };
@@ -39,7 +47,7 @@ export function PriceChart({ prices }: { prices: Record<string, number[]> }) {
   return (
     <Panel
       title="Clearing prices"
-      subtitle="per category and complexity"
+      subtitle="settled price per category · convergence = competition working"
       pattern="controlled"
       className="h-80"
     >

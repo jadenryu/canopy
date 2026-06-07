@@ -102,7 +102,7 @@ export function Arena({ agents }: { agents: AgentRow[] }) {
               disabled={!models[0] || busy}
               className="ml-auto rounded-md bg-canopy px-3 py-1.5 font-semibold text-black transition-colors hover:bg-positive disabled:opacity-40"
             >
-              ⚔ deploy to market
+              Deploy to market
             </button>
           </div>
           {chosen && (
@@ -142,9 +142,13 @@ export function Arena({ agents }: { agents: AgentRow[] }) {
           <p className="border-t border-edge pt-2 text-[10px] text-ink-faint">
             this is benchmarking with stakes: accuracy decides pay, pay decides
             survival. a model that can&apos;t price its own work goes bankrupt —
-            no static eval tells you that. results land on the{" "}
+            no static eval tells you that. watch it compete on the{" "}
+            <a href="/" className="text-canopy hover:underline">
+              trading floor
+            </a>{" "}
+            and compare results on the{" "}
             <a href="/benchmarks" className="text-canopy hover:underline">
-              benchmarks page ↗
+              benchmarks page
             </a>
             .
           </p>
