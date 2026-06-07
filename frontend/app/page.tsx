@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { BidLeaderboard } from "@/components/BidLeaderboard";
 import { ApprovalCard, ControlPanel } from "@/components/ControlPanel";
 import { DeclarativePanel } from "@/components/DeclarativePanel";
 import { EventFeed } from "@/components/EventFeed";
@@ -166,9 +167,12 @@ export default function Home() {
         </TabsList>
         <TabsContent value="floor" className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <PriceChart prices={state?.prices ?? {}} />
-          <OrderBook jobs={jobs} />
+          <BidLeaderboard agents={agents} jobs={jobs} onSelectAgent={selectAgent} />
           <Leaderboard agents={agents} />
           <Wallets agents={agents} />
+          <div className="lg:col-span-2">
+            <OrderBook jobs={jobs} />
+          </div>
         </TabsContent>
         <TabsContent value="deals" className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <HiringGraph jobs={jobs} agents={agents} />
