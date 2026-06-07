@@ -23,7 +23,7 @@ from collections import defaultdict
 
 import weave
 
-from canopy.agents import lessons
+from canopy.agents import chat, lessons
 from canopy.agents.analyst import generate_report
 from canopy.agents.skills import GENERALIST_PROFILE, MANAGER_PROFILE, SPECIALIST_PROFILES
 from canopy.agents.strategies import (
@@ -524,6 +524,7 @@ async def run_scenario(
         if job_delay:
             await asyncio.sleep(job_delay)
 
+    await chat.round_chat(mock)  # agents react to the round, from memory
     await _publish_report(market)
 
     if not mock:

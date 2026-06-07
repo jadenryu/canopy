@@ -54,6 +54,14 @@ export type MarketEvent = {
   payload: Record<string, unknown>;
 };
 
+// post-round agent reaction, grounded in the agent's own memory
+export type ChatMessage = {
+  agent_id: string;
+  label: string;
+  text: string;
+  ts: number;
+};
+
 // Declarative gen-UI spec (backend streams it; DeclarativePanel walks it).
 export type SpecSection =
   | { type: "stats"; items: { label: string; value: string }[] }
@@ -92,6 +100,7 @@ export type MarketState = {
   pending_action: PendingAction | null;
   reserve_price: number;
   paused: boolean;
+  chat: ChatMessage[];
 };
 
 const INITIAL: MarketState = {
@@ -107,6 +116,7 @@ const INITIAL: MarketState = {
   pending_action: null,
   reserve_price: 0.5,
   paused: false,
+  chat: [],
 };
 
 export function useMarketState() {

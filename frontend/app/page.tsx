@@ -6,14 +6,22 @@ import { BidLeaderboard } from "@/components/BidLeaderboard";
 import { ApprovalCard, ControlPanel } from "@/components/ControlPanel";
 import { DeclarativePanel } from "@/components/DeclarativePanel";
 import { EventFeed } from "@/components/EventFeed";
+import { FloorChat } from "@/components/FloorChat";
 import { HiringGraph } from "@/components/HiringGraph";
 import { AgentSheet, JobSheet } from "@/components/Inspector";
 import { Leaderboard } from "@/components/Leaderboard";
 import { MarketPipeline } from "@/components/MarketPipeline";
 import { OrderBook } from "@/components/OrderBook";
-import { PriceChart } from "@/components/PriceChart";
+import { PriceCards } from "@/components/PriceCards";
 import { ReportFrame } from "@/components/ReportFrame";
 import { Wallets } from "@/components/Wallets";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { runScenario, useMarketState } from "@/lib/useMarketState";
 
@@ -84,6 +92,22 @@ export default function Home() {
   const active = agents.filter((a) => a.status === "active").length;
   const bankrupt = agents.filter((a) => a.status === "bankrupt").length;
 
+  const [earningsOpen, setEarningsOpen] = useState(false);
+  const earnings = useMemo(
+    () =>
+      [...agents]
+        .map((a) => ({
+          a,
+          earned: settledJobs
+            .filter((j) => j.winner_id === a.id)
+            .reduce((s, j) => s + j.price, 0),
+          won: settledJobs.filter((j) => j.winner_id === a.id).length,
+        }))
+        .filter((e) => e.won > 0)
+        .sort((x, y) => y.earned - x.earned),
+    [agents, settledJobs]
+  );
+
   const selectAgent = (id: string) => {
     setJobId(null);
     setAgentId(id);
@@ -126,7 +150,9 @@ export default function Home() {
       {/* KPI strip */}
       <div className="flex flex-wrap items-center divide-x divide-edge">
         <Kpi label="Jobs settled" value={settledJobs.length} />
-        <Kpi label="Volume" value={volume.toFixed(2)} tone="text-canopy" />
+        <button onClick={() => setEarningsOpen(true)} className="text-left">
+          <Kpi label="Volume — click to break down" value={volume.toFixed(2)} tone="text-canopy" />
+        </button>
         <Kpi label="Active agents" value={active} />
         <Kpi
           label="Bankruptcies"
@@ -147,7 +173,7 @@ export default function Home() {
             onSelectJob={selectJob}
           />
         </div>
-        <EventFeed events={events} />
+        <EventFeed events={events} onSelectJob={selectJob} onSelectAgent={selectAgent} />
       </div>
 
       <Tabs value={tab} onValueChange={switchTab}>
@@ -166,10 +192,11 @@ export default function Home() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="floor" className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <PriceChart prices={state?.prices ?? {}} />
+          <PriceCards prices={state?.prices ?? {}} />
           <BidLeaderboard agents={agents} jobs={jobs} onSelectAgent={selectAgent} />
           <Leaderboard agents={agents} />
           <Wallets agents={agents} />
+          <FloorChat messages={state?.chat ?? []} onSelectAgent={selectAgent} />
           <div className="lg:col-span-2">
             <OrderBook jobs={jobs} />
           </div>
@@ -182,6 +209,42 @@ export default function Home() {
       </Tabs>
 
       <ControlPanel pending={state?.pending_action ?? null} />
+
+      <Sheet open={earningsOpen} onOpenChange={setEarningsOpen}>
+        <SheetContent className="w-96 overflow-y-auto border-edge bg-surface sm:max-w-96">
+          <SheetHeader>
+            <SheetTitle className="text-ink">Volume by agent</SheetTitle>
+            <SheetDescription className="text-xs text-ink-dim">
+              Total settled payments earned this session — escrow released on
+              passing the Weave referee.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex flex-col gap-1 px-4 pb-6">
+            {earnings.length === 0 ? (
+              <p className="py-4 text-center text-xs text-ink-faint">
+                No settled payments yet.
+              </p>
+            ) : (
+              earnings.map(({ a, earned, won }) => (
+                <button
+                  key={a.id}
+                  onClick={() => {
+                    setEarningsOpen(false);
+                    selectAgent(a.id);
+                  }}
+                  className="flex items-center gap-2 rounded-md border border-edge px-2.5 py-2 text-left text-xs transition-colors hover:border-edge-2 hover:bg-surface-2/60"
+                >
+                  <span className="min-w-0 flex-1 truncate text-ink">{a.label || a.id}</span>
+                  <span className="num text-[11px] text-ink-faint">{won} jobs</span>
+                  <span className="num w-16 text-right text-positive">
+                    {earned.toFixed(2)}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <ApprovalCard pending={state?.pending_action ?? null} />
       <AgentSheet

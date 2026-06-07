@@ -46,6 +46,7 @@ DELTA_KEYS = (
     "pending_action",
     "reserve_price",
     "paused",
+    "chat",
 )
 
 

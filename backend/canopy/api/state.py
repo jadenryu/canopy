@@ -7,6 +7,7 @@ Stream, prices ZSETs, the leaderboard ZSET.
 """
 import json
 
+from canopy.agents.chat import get_chat
 from canopy.agents.lessons import get_lessons
 from canopy.config import settings
 from canopy.market.events import EVENTS_STREAM
@@ -124,4 +125,5 @@ async def market_snapshot() -> dict:
         "pending_action": json.loads(pending_raw) if pending_raw else None,
         "reserve_price": settings.reserve_price,
         "paused": bool(await r.get("market:paused")),
+        "chat": await get_chat(),
     }

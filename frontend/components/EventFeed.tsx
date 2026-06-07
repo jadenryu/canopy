@@ -131,9 +131,27 @@ const KEY_EVENTS = new Set([
   "report_ready",
 ]);
 
+// pull the most relevant entity id out of an event payload
+function entityOf(e: MarketEvent): { job?: string; agent?: string } {
+  const p = e.payload as Record<string, string>;
+  return {
+    job: (p.job_id as string) || undefined,
+    agent: (p.agent_id || p.winner_id || p.parent_id) as string | undefined,
+  };
+}
+
 // The market's activity stream — one line per event, status by indicator.
 // "Key" hides the bid/escrow firehose so the big moments stay readable.
-export function EventFeed({ events }: { events: MarketEvent[] }) {
+// Rows are clickable: jump to the job or agent the event is about.
+export function EventFeed({
+  events,
+  onSelectJob,
+  onSelectAgent,
+}: {
+  events: MarketEvent[];
+  onSelectJob?: (id: string) => void;
+  onSelectAgent?: (id: string) => void;
+}) {
   const [keyOnly, setKeyOnly] = useState(false);
   const visible = keyOnly ? events.filter((e) => KEY_EVENTS.has(e.type)) : events;
   const recent = visible.slice(-MAX_ROWS).reverse();
@@ -159,12 +177,19 @@ export function EventFeed({ events }: { events: MarketEvent[] }) {
         <div className="flex flex-col">
           {recent.map((e, i) => {
             const major = MAJOR.has(e.type);
+            const { job, agent } = entityOf(e);
+            const click = job && onSelectJob
+              ? () => onSelectJob(job)
+              : agent && onSelectAgent
+                ? () => onSelectAgent(agent)
+                : undefined;
             return (
               <div
                 key={total - 1 - i}
+                onClick={click}
                 className={`flex animate-slide-in items-baseline gap-2.5 border-b border-edge/50 py-1.5 text-xs last:border-0 ${
                   major ? "bg-surface-2/40" : ""
-                }`}
+                } ${click ? "cursor-pointer hover:bg-surface-2/60" : ""}`}
               >
                 <span className="num shrink-0 text-[10px] text-ink-faint">
                   {fmtTime(e.ts)}
