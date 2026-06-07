@@ -32,7 +32,10 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full">
+      {/* suppressHydrationWarning: browser extensions (Grammarly et al.)
+          inject attributes into <body> before React hydrates — harmless,
+          but React treats it as a server/client mismatch without this. */}
+      <body className="min-h-full" suppressHydrationWarning>
         <MarketProvider>
           <AppShell>{children}</AppShell>
         </MarketProvider>
