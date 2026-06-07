@@ -1,4 +1,8 @@
-# Canopy — 3-minute demo script (strictly timed)
+# Canopy — 3-minute demo script (SUPERSEDED — rehearse from final_script.md)
+
+> ⚠️ 2026-06-07: this version predates the app-shell redesign, the landed
+> Arena/benchmark/police backends, and the final eval numbers.
+> **Use `final_script.md`.**
 
 > WeaveHacks judging: Impact/Utility · Technical Demo · Creativity ·
 > Presentation · **Multi-agent harness sophistication**. The demo IS the
