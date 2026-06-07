@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 
 import { useSession } from "@/lib/session";
 import { control, runScenario, useMarketState } from "@/lib/useMarketState";
@@ -37,6 +37,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => setMounted(true), []);
+
+  // ONE auto-start for the whole app — pages must not start their own runs
+  const watched = useRef(false);
+  useEffect(() => {
+    if (mounted && !watched.current) {
+      watched.current = true;
+      if (!running) start();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
 
   const launch = async () => {
     setLaunching(true);

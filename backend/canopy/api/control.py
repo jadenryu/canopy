@@ -36,6 +36,18 @@ from canopy.sim.engine import ensure_market
 
 router = APIRouter(prefix="/control")
 
+def spawn(coro, label: str) -> asyncio.Task:
+    """create_task with a crash logger — background failures must be visible."""
+    task = asyncio.create_task(coro)
+
+    def _done(t: asyncio.Task) -> None:
+        if not t.cancelled() and t.exception() is not None:
+            print(f"[canopy] background task '{label}' failed: {t.exception()!r}")
+
+    task.add_done_callback(_done)
+    return task
+
+
 CUSTOM_AGENTS_SET = "agents:custom"
 
 STRATEGY_REGISTRY = {
@@ -71,7 +83,7 @@ async def post_job(body: PostJobRequest):
         bounty_cap=body.bounty_cap * (1.5 if body.complex_job else 1.0),
         client_id="human",
     )
-    asyncio.create_task(market.run_job(job))
+    spawn(market.run_job(job), f"post_job {job.id}")
     return {"status": "posted", "job_id": job.id}
 
 
@@ -95,7 +107,7 @@ async def demand_spike(body: SpikeRequest):
             await asyncio.sleep(settings.spike_stagger)
         await asyncio.gather(*tasks)
 
-    asyncio.create_task(run_burst())
+    spawn(run_burst(), "demand_spike")
     return {"status": "spiking", "jobs": body.jobs, "category": body.category}
 
 

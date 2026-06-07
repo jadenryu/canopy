@@ -85,7 +85,7 @@ def _match_text(job: Job) -> str:
 
 def _clone_strategy(strategy, rng: random.Random):
     if isinstance(strategy, Specialist):
-        return Specialist(rng, strategy.category)
+        return Specialist(rng, strategy.category, extra=strategy.categories - {strategy.category})
     return type(strategy)(rng)
 
 
@@ -145,13 +145,14 @@ class Market:
         await order_book.save_job(job)
         await events.emit("executing", {"job_id": job.id, "agent_id": job.winner_id})
         winner = self.workers[job.winner_id]
-        # busy → surge pricing on concurrent bids (capacity economics)
-        winner.busy = True
+        # busy → surge pricing on concurrent bids (capacity economics);
+        # a counter, not a flag — spikes can land two jobs on one winner
+        winner.busy_jobs += 1
         try:
             # .call() keeps the Call object so Scorer verdicts attach to the trace
             result, exec_call = await winner.execute_job.call(winner, job)
         finally:
-            winner.busy = False
+            winner.busy_jobs -= 1
 
         # solo workers burn model cost per hop; a manager's costs are the
         # real escrow payments to its subcontractors (already debited)
@@ -296,7 +297,12 @@ def build_fleet(rng: random.Random, mock: bool, sabotage: bool) -> list[Worker]:
     for cat, profile in SPECIALIST_PROFILES.items():
         w = Worker(
             f"worker-{cat[:4]}",
-            strategy=Specialist(random.Random(rng.random()), cat),
+            strategy=Specialist(
+                random.Random(rng.random()),
+                cat,
+                # the history specialist's profile covers literature too
+                extra={"literature"} if cat == "history" else None,
+            ),
             mock=mock,
         )
         w.skill_text = profile

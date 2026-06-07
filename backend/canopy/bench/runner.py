@@ -85,87 +85,91 @@ async def run_benchmark(
          "questions": len(sample)},
     )
 
-    jobs: list[Job] = [
-        Job(
-            id=f"bench-{seq}-{i:03d}",
-            spec=row["question"],
-            category=row["category"],
-            hops=row["hops"],
-            bounty_cap=settings.default_bounty_cap,
-            client_id="human",
-            ground_truth=row["answer"],
-        )
-        for i, row in enumerate(sample)
-    ]
+    try:
+        jobs = [
+            Job(
+                id=f"bench-{seq}-{i:03d}",
+                spec=row["question"],
+                category=row["category"],
+                hops=row["hops"],
+                bounty_cap=settings.default_bounty_cap,
+                client_id="human",
+                ground_truth=row["answer"],
+            )
+            for i, row in enumerate(sample)
+        ]
 
-    # per-model tallies + per-model weave eval rows
-    tally: dict[str, dict] = {m: {"answered": 0, "correct": 0, "paid": 0.0, "preds": []} for m in models}
+        # per-model tallies + per-model weave eval rows
+        tally: dict[str, dict] = {m: {"answered": 0, "correct": 0, "paid": 0.0, "preds": []} for m in models}
 
-    async def run_assigned(job: Job, worker: Worker):
-        with weave.thread(job.id):
-            from canopy.market import order_book
+        async def run_assigned(job: Job, worker: Worker):
+            with weave.thread(job.id):
+                from canopy.market import order_book
 
-            await order_book.post_job(job)
-            price = await quote(worker, job)
-            bid = Bid(job_id=job.id, agent_id=worker.id, price=price, effective_bid=price)
-            return await market.finish_job(job, bid)
+                await order_book.post_job(job)
+                price = await quote(worker, job)
+                bid = Bid(job_id=job.id, agent_id=worker.id, price=price, effective_bid=price)
+                return await market.finish_job(job, bid)
 
-    fielded_list = list(fielded.items())
-    if allocator in ISOLATED:
-        for model, worker in fielded_list:
+        fielded_list = list(fielded.items())
+        if allocator in ISOLATED:
+            for model, worker in fielded_list:
+                for i, job in enumerate(jobs):
+                    clone = job.model_copy(update={"id": f"{job.id}-{_slug(model)[:16]}"})
+                    done, result = await run_assigned(clone, worker)
+                    _tally(tally[model], done, result)
+        else:
             for i, job in enumerate(jobs):
-                clone = job.model_copy(update={"id": f"{job.id}-{_slug(model)[:16]}"})
-                done, result = await run_assigned(clone, worker)
-                _tally(tally[model], done, result)
-    else:
-        for i, job in enumerate(jobs):
-            if allocator == "market":
-                done, result = await market.run_job(job)
-                winner_model = next(
-                    (m for m, w in fielded.items() if w.id == done.winner_id), None
-                )
-                if winner_model:
-                    _tally(tally[winner_model], done, result)
-            else:
-                if allocator == "random":
-                    model, worker = rng.choice(fielded_list)
-                else:  # round_robin
-                    model, worker = fielded_list[i % len(fielded_list)]
-                done, result = await run_assigned(job, worker)
-                _tally(tally[model], done, result)
+                if allocator == "market":
+                    done, result = await market.run_job(job)
+                    winner_model = next(
+                        (m for m, w in fielded.items() if w.id == done.winner_id), None
+                    )
+                    if winner_model:
+                        _tally(tally[winner_model], done, result)
+                else:
+                    if allocator == "random":
+                        model, worker = rng.choice(fielded_list)
+                    else:  # round_robin
+                        model, worker = fielded_list[i % len(fielded_list)]
+                    done, result = await run_assigned(job, worker)
+                    _tally(tally[model], done, result)
 
-    # weave Evaluation per model (B3): the bench run as a formal eval artifact
-    results = []
-    finished_at = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
-    for model in models:
-        t = tally[model]
-        if t["preds"] and not mock:
-            _log_weave_eval(dataset, model, t["preds"])
-        agent = await registry.get_agent(fielded[model].id)
-        result_row = {
-            "run_id": run_id,
-            "dataset": dataset,
-            "model": model,
-            "allocator": allocator,
-            "questions": len(sample),
-            "accuracy": round(t["correct"] / t["answered"], 4) if t["answered"] else 0.0,
-            "cost_per_correct": round(t["paid"] / t["correct"], 4) if t["correct"] else 0.0,
-            "market_share": round(t["answered"] / len(sample), 4) if allocator == "market" else 0.0,
-            "bankruptcies": 1 if agent.get("status") == "bankrupt" else 0,
-            "finished_at": finished_at,
-        }
-        results.append(result_row)
-        await r.lpush(RUNS_KEY, json.dumps(result_row))
+        # weave Evaluation per model (B3): the bench run as a formal eval artifact
+        results = []
+        finished_at = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+        for model in models:
+            t = tally[model]
+            if t["preds"] and not mock:
+                _log_weave_eval(dataset, model, t["preds"])
+            agent = await registry.get_agent(fielded[model].id)
+            result_row = {
+                "run_id": run_id,
+                "dataset": dataset,
+                "model": model,
+                "allocator": allocator,
+                "questions": len(sample),
+                "accuracy": round(t["correct"] / t["answered"], 4) if t["answered"] else 0.0,
+                "cost_per_correct": round(t["paid"] / t["correct"], 4) if t["correct"] else 0.0,
+                "market_share": round(t["answered"] / len(sample), 4) if allocator == "market" else 0.0,
+                "bankruptcies": 1 if agent.get("status") == "bankrupt" else 0,
+                "finished_at": finished_at,
+            }
+            results.append(result_row)
+            await r.lpush(RUNS_KEY, json.dumps(result_row))
 
-    # retire the challengers — bench agents don't linger on the floor
-    for model, w in fielded.items():
-        await r.hset(f"agent:{w.id}", "status", "retired")
-        await r.srem(registry.AGENTS_SET, w.id)
-        await matching.remove_agent_skills(w.id)
-        market.workers.pop(w.id, None)
-    for w in base.workers.values():
-        w.market = base  # restore house workers to the live session
-        w.mock = house_mock_flags.get(w.id, False)
+    finally:
+        # cleanup MUST run even when a job raises — otherwise the live
+        # market keeps mock flags, dead market handles and ghost agents
+        # retire the challengers — bench agents don't linger on the floor
+        for model, w in fielded.items():
+            await r.hset(f"agent:{w.id}", "status", "retired")
+            await r.srem(registry.AGENTS_SET, w.id)
+            await matching.remove_agent_skills(w.id)
+            market.workers.pop(w.id, None)
+        for w in base.workers.values():
+            w.market = base  # restore house workers to the live session
+            w.mock = house_mock_flags.get(w.id, False)
 
     await events.emit("bench_run_finished", {"run_id": run_id, "results": len(results)})
     return results

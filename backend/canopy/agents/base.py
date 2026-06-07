@@ -32,11 +32,15 @@ class Agent:
         self.id = agent_id
         self.strategy = strategy or Generalist(rng or random.Random(settings.rng_seed))
         self.model_tier = model_tier
-        self.busy = False  # executing a job right now → surge pricing
+        self.busy_jobs = 0  # concurrent executions → surge pricing while > 0
 
     @property
     def is_manager(self) -> bool:
         return isinstance(self.strategy, Manager)
+
+    @property
+    def busy(self) -> bool:
+        return self.busy_jobs > 0
 
     def est_cost(self, job: Job) -> float:
         if self.is_manager:
@@ -60,7 +64,7 @@ class Agent:
         )
         if price is None:
             return None
-        if self.busy:
+        if self.busy:  # property: busy_jobs > 0
             # capacity is priced, not blocked: a loaded agent quotes overtime.
             # this is what makes demand spikes visibly move the market.
             price *= settings.busy_surge

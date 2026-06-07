@@ -214,6 +214,7 @@ export function MarketPipeline({
                 <AnimatePresence mode="popLayout">
                   {columns[stage].length === 0 ? (
                     <motion.span
+                      key="empty"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}

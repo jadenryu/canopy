@@ -44,22 +44,13 @@ function Kpi({
 // connection. The market flow board is the centerpiece; everything is
 // selectable for detail.
 export default function Home() {
-  const { state, start, running } = useMarketState();
+  const { state } = useMarketState();
   const [agentId, setAgentId] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [tab, setTab] = useState("floor");
   const [flash, setFlash] = useState<Set<string>>(new Set());
-  const watched = useRef(false);
   const seenEvents = useRef(0);
-
-  // open the live watch stream once on mount
-  useEffect(() => {
-    if (!watched.current) {
-      watched.current = true;
-      if (!running) start();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // the AG-UI stream is started once by AppShell — pages only read state
 
   const stateAgents = state?.agents;
   const stateJobs = state?.jobs;
@@ -89,6 +80,7 @@ export default function Home() {
 
   const settledJobs = jobs.filter((j) => j.status === "settled");
   const volume = settledJobs.reduce((s, j) => s + j.price, 0);
+  const active = agents.filter((a) => a.status === "active").length;
   const bankrupt = agents.filter((a) => a.status === "bankrupt").length;
 
   const selectAgent = (id: string) => {
@@ -106,7 +98,7 @@ export default function Home() {
       <div className="flex flex-wrap items-center divide-x divide-edge">
         <Kpi label="Jobs settled" value={settledJobs.length} />
         <Kpi label="Volume" value={volume.toFixed(2)} tone="text-canopy" />
-        <Kpi label="Active agents" value={agents.length - bankrupt} />
+        <Kpi label="Active agents" value={active} />
         <Kpi
           label="Bankruptcies"
           value={bankrupt}

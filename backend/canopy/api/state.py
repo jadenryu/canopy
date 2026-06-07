@@ -53,7 +53,7 @@ async def market_snapshot() -> dict:
     # order book: open jobs (ZSET) + full job docs incl. status for recents
     open_ids = await r.zrange("jobs:open", 0, -1)
     jobs = []
-    async for key in r.scan_iter(match="job:job-*", count=500):
+    async for key in r.scan_iter(match="job:*", count=500):
         if key.count(":") != 1:  # skip job:{id}:bids / :bid_prices
             continue
         raw = await r.get(key)

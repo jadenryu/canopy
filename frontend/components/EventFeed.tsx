@@ -1,6 +1,5 @@
 "use client";
 
-import { EVENT_COLORS } from "@/lib/status";
 import { MarketEvent } from "@/lib/useMarketState";
 import { Empty } from "./Empty";
 import { Panel } from "./Panel";
@@ -21,9 +20,45 @@ function fmtTime(ts: number): string {
   return new Date(ts * 1000).toLocaleTimeString("en-GB", { hour12: false });
 }
 
+// literal classes only — Tailwind generates utilities it can SEE in source
+const EVENT_DOT: Record<string, string> = {
+  job_posted: "bg-info",
+  bid_placed: "bg-ink-dim",
+  awarded: "bg-working",
+  executing: "bg-working",
+  scored: "bg-verify",
+  settled: "bg-positive",
+  rejected: "bg-negative",
+  failed: "bg-negative",
+  penalty: "bg-negative",
+  bankruptcy: "bg-negative",
+  fork: "bg-positive",
+  reputation_update: "bg-ink-faint",
+  price_update: "bg-positive",
+  escrow_hold: "bg-ink-faint",
+  escrow_release: "bg-ink-faint",
+  escrow_refund: "bg-ink-faint",
+  agent_registered: "bg-info",
+  scenario_started: "bg-special",
+  scenario_finished: "bg-special",
+  report_ready: "bg-special",
+  shock: "bg-negative",
+  audit_failed: "bg-working",
+  fraud_detected: "bg-negative",
+  lesson_learned: "bg-canopy",
+  approval_required: "bg-working",
+  approval_resolved: "bg-working",
+  bench_run_started: "bg-special",
+  bench_run_finished: "bg-special",
+  paused: "bg-working",
+  resumed: "bg-canopy",
+  liquidity: "bg-positive",
+  reserve_price: "bg-info",
+  custom_agents_removed: "bg-ink-faint",
+};
+
 function dotClass(type: string): string {
-  const text = EVENT_COLORS[type] ?? "text-ink-faint";
-  return text.split(" ")[0].replace("text-", "bg-");
+  return EVENT_DOT[type] ?? "bg-ink-faint";
 }
 
 function summarize(e: MarketEvent): string {

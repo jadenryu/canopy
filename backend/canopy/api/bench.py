@@ -50,7 +50,11 @@ async def bench_run(body: BenchRunRequest):
         finally:
             await release_lock()
 
-    asyncio.create_task(go())
+    task = asyncio.create_task(go())
+    task.add_done_callback(
+        lambda t: (not t.cancelled() and t.exception() is not None)
+        and print(f"[canopy] bench run failed: {t.exception()!r}")
+    )
     return {
         "status": "started",
         "dataset": body.dataset,

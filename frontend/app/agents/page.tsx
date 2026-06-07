@@ -36,7 +36,7 @@ export default function AgentsPage() {
         </p>
       </div>
 
-      <Panel title="Roster" subtitle={`${agents.length} registered`} pattern="controlled">
+      <Panel title="Roster" subtitle={`${agents.filter((a) => a.status === "active").length} active · ${agents.length} ever registered`} pattern="controlled">
         {agents.length === 0 ? (
           <p className="py-6 text-center text-xs text-ink-faint">
             No agents yet — run a scenario from the header.

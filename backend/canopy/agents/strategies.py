@@ -50,16 +50,17 @@ class Generalist(Strategy):
 
 
 class Specialist(Strategy):
-    """Sharp pricing inside its own category; sits out everything else."""
+    """Sharp pricing inside its home categories; sits out everything else."""
 
     name = "specialist"
 
-    def __init__(self, rng: random.Random, category: str):
+    def __init__(self, rng: random.Random, category: str, extra: set[str] | None = None):
         super().__init__(rng)
         self.category = category
+        self.categories = {category} | (extra or set())
 
     def price(self, job, est_cost, last_clearing):
-        if job.category != self.category:
+        if job.category not in self.categories:
             return None  # not my niche
         return est_cost * (1 + self.rng.uniform(0.02, 0.10))  # sharp pricing
 
