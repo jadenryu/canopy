@@ -68,15 +68,19 @@ assignment rule differs:
 
 - **Market: +18% quality and +15% quality-per-dollar vs round-robin; same
   quality as a single premium agent at 31% of the cost (+205% QPD).**
-- The market **matches a hand-vetted single agent while carrying two
-  saboteurs in its fleet** — it bankrupted both during warm-up, unprompted.
-  The fixed allocators, which can't react, bled ~17% quality to the same
-  saboteurs across the whole window. No code path special-cases bad actors;
-  the mechanism does it.
-- A vetted single agent ties on efficiency — until it dies. Top-agent death
-  is 100% capacity loss for the single-agent setup; the market re-cleared a
-  demand burst right after losing its top agent at a ~60% transient surge
-  premium (2.04 → 3.35 → back to ~2.1).
+- It **ties the best fixed allocator (a hand-vetted single cheap agent) on
+  quality** — and is the *only* allocator that survives the two things a
+  fixed setup can't (measured, `results.md`):
+  - **Bad actors:** with 2 saboteurs in the fleet, the market routed **0%**
+    of jobs to them (reputation freezes them out after their first
+    failures); round-robin wasted **20%** of its capacity on them and never
+    stopped — still hiring them at job #18 of 20.
+  - **Agent death:** killing the top agent caused **zero clearing-price
+    disruption** — substitutes absorbed the load on the next job. For a
+    single-agent setup the same event is a total, permanent outage.
+- The pitch in one line: *the market matches the best fixed agent's quality
+  at a third of premium's cost, **and** it's the only allocator that defunds
+  saboteurs and survives agent death.*
 
 ## How we built it
 

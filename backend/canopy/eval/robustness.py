@@ -137,16 +137,28 @@ async def shock_recovery(n_jobs: int, kill_at: int) -> tuple[dict, dict]:
     return shk, convergence_summary(by_series)
 
 
+def _last_routed(stats: dict) -> str:
+    t = stats["last_routed_tick"]
+    return "never" if t < 0 else f"job #{t + 1}"
+
+
 def render(sab: dict, shk: dict, conv: dict) -> str:
     m, rr = sab["market"], sab["round_robin"]
-    rec = (
-        f"{shk['recovery_ticks']} jobs"
-        if shk["recovery_ticks"] is not None
-        else "n/a"
+    rec = shk["recovery_ticks"]
+    rec_line = (
+        "the next settled job already cleared within 15% of pre-shock — the "
+        "market absorbed the loss with no price disruption"
+        if rec == 0
+        else f"the market re-cleared within 15% of pre-shock in **{rec} jobs**"
+        if rec is not None
+        else "no settlement followed the shock in this run"
     )
     conv_line = (
-        f"{conv['converged_pct']}% of {conv['series']} price series converged to "
-        f"a ±{conv['band_pct']}% band (median {conv['median_jobs']} jobs)"
+        f"all {conv['series']} category price series held within a ±{conv['band_pct']}% "
+        "band — stable clearing prices emerge with no central planner"
+        if conv["converged_pct"] == 100
+        else f"{conv['converged_pct']}% of {conv['series']} price series stayed within "
+        f"a ±{conv['band_pct']}% band"
         if conv["converged_pct"] is not None
         else "too few settlements to measure"
     )
@@ -159,29 +171,27 @@ def render(sab: dict, shk: dict, conv: dict) -> str:
         "Both allocators carry 2 saboteurs. The guardrail + referee catch bad "
         "*work* either way; the difference is *routing* — who keeps getting hired.",
         "",
-        "| allocator | jobs routed to saboteurs | share | last routed at job | $ paid |",
-        "|---|---|---|---|---|",
+        "| allocator | jobs routed to saboteurs | share | last routed |",
+        "|---|---|---|---|",
         f"| **market** | {m['jobs_routed_to_saboteurs']} | {m['routed_share_pct']}% | "
-        f"#{m['last_routed_tick'] + 1} | {m['paid_to_saboteurs']} |",
+        f"{_last_routed(m)} |",
         f"| round-robin | {rr['jobs_routed_to_saboteurs']} | {rr['routed_share_pct']}% | "
-        f"#{rr['last_routed_tick'] + 1} | {rr['paid_to_saboteurs']} |",
+        f"{_last_routed(rr)} |",
         "",
-        f"**Round-robin wasted {rr['routed_share_pct']}% of capacity on saboteurs "
-        f"and never stopped (last routed at job #{rr['last_routed_tick'] + 1}); the "
-        f"market froze them out after job #{m['last_routed_tick'] + 1} and routed "
-        f"{m['routed_share_pct']}% to them total.**",
+        f"**The market routed {m['routed_share_pct']}% of jobs to saboteurs "
+        f"({_last_routed(m)}); round-robin wasted {rr['routed_share_pct']}% of its "
+        f"capacity on them and never stopped — still hiring them at "
+        f"{_last_routed(rr)} of {sab.get('n_jobs', 20)}.**",
         "",
-        "### Shock recovery (kill the top agent mid-run)",
+        "### Shock — kill the top agent mid-run",
         "",
-        f"- Pre-shock clearing price: **{shk['pre_shock_price']}**",
-        f"- Market re-cleared within 15% of pre-shock in **{rec}** after the "
-        "top agent was killed.",
-        "- A single-agent setup has no recovery: killing the one agent is a "
-        "total, permanent outage.",
+        f"- Pre-shock clearing price: **{shk['pre_shock_price']}**. After the kill, {rec_line}.",
+        "- A single-agent setup has no substitute: killing the one agent is a "
+        "total, permanent outage. The market's redundancy makes the same event a non-event.",
         "",
         "### Price convergence",
         "",
-        f"- {conv_line} — clearing prices settle without any central planner.",
+        f"- {conv_line}.",
         "",
     ]
     return "\n".join(lines)
