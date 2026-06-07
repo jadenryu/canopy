@@ -17,6 +17,7 @@ export type AgentRow = {
   id: string;
   name: string;
   label: string; // human-readable role description
+  model: string; // the actual base model doing the work
   strategy: string;
   model_tier: string;
   status: string;
@@ -127,15 +128,19 @@ export function useMarketState() {
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 
 export async function runScenario(opts?: { jobs?: number; mock?: boolean }) {
+  return runScenarioBody({
+    jobs: opts?.jobs ?? 13,
+    mock: opts?.mock ?? false,
+    sabotage: true,
+  });
+}
+
+// full control over the run config (fleet presets, custom rosters)
+export async function runScenarioBody(body: Record<string, unknown>) {
   const res = await fetch(`${BACKEND}/sim/run`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      jobs: opts?.jobs ?? 13,
-      mock: opts?.mock ?? false,
-      sabotage: true,
-      job_delay: 1.0,
-    }),
+    body: JSON.stringify({ job_delay: 1.0, ...body }),
   });
   return res.json();
 }

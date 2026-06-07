@@ -46,6 +46,7 @@ class Worker(Agent):
         self.mock = mock
         self.sabotage = sabotage  # deliberately sloppy output → guardrail bait
         self.hacker = hacker  # games the LLM judge; the holdout police's mark
+        self.stake = None  # optional starting balance from a fleet spec
         self.market = None  # set by the sim; lets managers post sub-jobs
 
     @property

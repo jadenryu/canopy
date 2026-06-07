@@ -46,10 +46,11 @@ class Agent:
         if self.is_manager:
             # decompose + hire cheap labor per hop, skim the spread
             return job.hops * settings.model_cost_cheap * settings.manager_hop_discount
-        per_hop = (
+        per_hop = settings.model_costs.get(
+            getattr(self, "model", ""),
             settings.model_cost_premium
             if self.model_tier == "premium"
-            else settings.model_cost_cheap
+            else settings.model_cost_cheap,
         )
         return job.hops * per_hop
 

@@ -19,6 +19,7 @@ async def register_agent(
     balance: float | None = None,
     parent_id: str = "",
     label: str = "",
+    model: str = "",
 ) -> None:
     r = get_redis()
     pipe = r.pipeline()
@@ -28,6 +29,7 @@ async def register_agent(
             "id": agent_id,
             "name": name,
             "label": label or agent_id,  # human-readable role description
+            "model": model,  # the actual base model doing the work
             "model_tier": model_tier,
             "strategy": strategy,
             "balance": f"{balance if balance is not None else settings.starting_balance:.4f}",

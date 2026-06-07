@@ -78,6 +78,7 @@ export function BidLeaderboard({
           <thead>
             <tr className="text-[10px] uppercase tracking-wide text-ink-faint">
               <th className="pb-2 pr-3 font-medium">Agent</th>
+              <th className="pb-2 pr-3 font-medium">Model</th>
               <th className="pb-2 pr-3 text-right font-medium">Bids</th>
               <th className="pb-2 pr-3 font-medium">Won</th>
               <th className="pb-2 pr-3 text-right font-medium">Win rate</th>
@@ -96,13 +97,16 @@ export function BidLeaderboard({
                     out ? "opacity-45" : ""
                   }`}
                 >
-                  <td className="max-w-44 truncate py-1.5 pr-3 text-ink" title={r.agent.id}>
+                  <td className="max-w-40 truncate py-1.5 pr-3 text-ink" title={r.agent.id}>
                     {r.agent.label || r.agent.id}
                     {out && (
                       <span className="ml-1.5 text-[10px] text-negative">
                         {r.agent.status}
                       </span>
                     )}
+                  </td>
+                  <td className="num max-w-36 truncate py-1.5 pr-3 text-[11px] text-ink-dim">
+                    {r.agent.model || r.agent.model_tier}
                   </td>
                   <td className="num py-1.5 pr-3 text-right text-ink-dim">{r.placed}</td>
                   <td className="py-1.5 pr-3">

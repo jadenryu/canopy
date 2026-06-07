@@ -49,6 +49,18 @@ class Settings(BaseSettings):
     reserve_price: float = 0.5  # minimum bid — prevents race-to-zero
     model_cost_cheap: float = 1.0  # nominal per-HOP cost units by model tier
     model_cost_premium: float = 3.0
+    # per-model nominal cost basis (per hop) — keeps auctions honest when
+    # the fleet mixes real models of different prices; fallback = tier cost
+    model_costs: dict[str, float] = {
+        "gpt-5.4-nano": 1.0,
+        "gpt-5.4-mini": 3.0,
+        "openai/gpt-4o-mini": 1.5,
+        "openai/gpt-5.4-nano": 1.0,
+        "anthropic/claude-haiku-4.5": 2.5,
+        "google/gemini-2.5-flash": 1.5,
+        "meta-llama/llama-3.1-8b-instruct": 0.8,
+        "mistralai/mistral-small-3.1": 1.0,
+    }
     default_bounty_cap: float = 10.0
     human_balance: float = 10_000.0  # the human client's wallet
 

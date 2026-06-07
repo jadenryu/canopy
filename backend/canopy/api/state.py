@@ -34,6 +34,7 @@ async def market_snapshot() -> dict:
                 "id": a["id"],
                 "name": a.get("name", a["id"]),
                 "label": a.get("label") or a["id"],
+                "model": a.get("model", ""),
                 "strategy": a.get("strategy", ""),
                 "model_tier": a.get("model_tier", ""),
                 "status": a.get("status", "active"),

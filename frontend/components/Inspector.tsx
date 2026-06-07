@@ -56,8 +56,8 @@ export function AgentSheet({
             </span>
           </SheetTitle>
           <SheetDescription className="text-xs text-ink-dim">
-            <span className="num">{agent.id}</span> · {agent.strategy} strategy ·{" "}
-            {agent.model_tier}
+            <span className="num">{agent.model || agent.model_tier}</span> ·{" "}
+            {agent.strategy} strategy
             {agent.parent_id ? ` · forked from ${agent.parent_id}` : ""}
           </SheetDescription>
         </SheetHeader>

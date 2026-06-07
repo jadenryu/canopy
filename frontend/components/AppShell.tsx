@@ -13,7 +13,8 @@ import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
 
 import { useSession } from "@/lib/session";
-import { control, runScenario, useMarketState } from "@/lib/useMarketState";
+import { control, runScenarioBody, useMarketState } from "@/lib/useMarketState";
+import { FleetConfig } from "./FleetConfig";
 
 const NAV = [
   { href: "/", label: "Trading floor", icon: Activity },
@@ -32,7 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { state, start, running } = useMarketState();
   const { user, ready, signIn, signOut } = useSession();
   const [mounted, setMounted] = useState(false);
-  const [launching, setLaunching] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [signingIn, setSigningIn] = useState(false);
 
@@ -48,14 +49,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
 
-  const launch = async () => {
-    setLaunching(true);
-    try {
-      if (!running) start();
-      await runScenario({ jobs: 13, mock: false });
-    } finally {
-      setTimeout(() => setLaunching(false), 1500);
-    }
+  const runConfigured = async (body: Record<string, unknown>) => {
+    if (!running) start();
+    await runScenarioBody(body);
   };
 
   const paused = state?.paused ?? false;
@@ -179,11 +175,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               {paused ? "Resume" : "Pause"}
             </button>
             <button
-              onClick={launch}
-              disabled={launching}
-              className="rounded-md bg-canopy px-3.5 py-1.5 font-medium text-[#06241a] transition-opacity hover:opacity-90 disabled:opacity-40"
+              onClick={() => setConfigOpen(true)}
+              className="rounded-md bg-canopy px-3.5 py-1.5 font-medium text-[#06241a] transition-opacity hover:opacity-90"
             >
-              {launching ? "Starting…" : "Run scenario"}
+              Run scenario
             </button>
           </div>
         </header>
@@ -191,6 +186,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           {mounted ? children : null}
         </main>
       </div>
+      <FleetConfig
+        open={configOpen}
+        onClose={() => setConfigOpen(false)}
+        onRun={runConfigured}
+      />
     </div>
   );
 }

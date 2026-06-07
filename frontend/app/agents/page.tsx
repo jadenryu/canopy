@@ -81,8 +81,8 @@ export default function AgentsPage() {
             <thead>
               <tr className="text-[10px] uppercase tracking-wide text-ink-faint">
                 <th className="pb-2 pr-3 font-medium">Agent</th>
-                <th className="pb-2 pr-3 font-medium">Strategy</th>
                 <th className="pb-2 pr-3 font-medium">Model</th>
+                <th className="pb-2 pr-3 font-medium">Role</th>
                 <th className="pb-2 pr-3 text-right font-medium">Reputation</th>
                 <th className="pb-2 pr-3 text-right font-medium">Balance</th>
                 <th className="pb-2 pr-3 text-right font-medium">Won / Failed</th>
@@ -106,14 +106,14 @@ export default function AgentsPage() {
                       <div className="text-ink">{a.label}</div>
                       <div className="num text-[10px] text-ink-faint">{a.id}</div>
                     </td>
+                    <td className="num py-2.5 pr-3 text-[11px] text-ink">
+                      {a.model || a.model_tier}
+                    </td>
                     <td className="py-2.5 pr-3">
                       <div className="text-ink-dim">{a.strategy}</div>
                       <div className="max-w-52 text-[10px] text-ink-faint">
                         {STRATEGY_NOTES[a.strategy] ?? ""}
                       </div>
-                    </td>
-                    <td className="num py-2.5 pr-3 text-[11px] text-ink-dim">
-                      {a.model_tier}
                     </td>
                     <td className="py-2.5 pr-3 text-right">
                       <span className="num text-ink">{a.reputation.toFixed(3)}</span>

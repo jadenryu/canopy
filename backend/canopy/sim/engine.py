@@ -26,7 +26,14 @@ import weave
 from canopy.agents import lessons
 from canopy.agents.analyst import generate_report
 from canopy.agents.skills import GENERALIST_PROFILE, MANAGER_PROFILE, SPECIALIST_PROFILES
-from canopy.agents.strategies import Generalist, Lowballer, Manager, Specialist, Undercutter
+from canopy.agents.strategies import (
+    Generalist,
+    Lowballer,
+    Manager,
+    Premium,
+    Specialist,
+    Undercutter,
+)
 from canopy.agents.worker import Worker
 from canopy.config import settings
 from canopy.jobs.schema import Job, JobResult, JobStatus
@@ -291,65 +298,106 @@ SPECIALIST_LABELS = {
     "history": "History & literature specialist",
 }
 
+STRATEGY_CLASSES = {
+    "generalist": Generalist,
+    "undercutter": Undercutter,
+    "premium": Premium,
+    "specialist": Specialist,
+    "manager": Manager,
+    "lowballer": Lowballer,
+}
 
-def build_fleet(rng: random.Random, mock: bool, sabotage: bool) -> list[Worker]:
-    """Heterogeneous fleet: 4 specialists, 2 generalists, 1 manager (+ saboteur)."""
-    fleet: list[Worker] = []
-    for cat, profile in SPECIALIST_PROFILES.items():
-        w = Worker(
-            f"worker-{cat[:4]}",
-            strategy=Specialist(
-                random.Random(rng.random()),
-                cat,
-                # the history specialist's profile covers literature too
-                extra={"literature"} if cat == "history" else None,
-            ),
-            mock=mock,
+
+def _short(model: str) -> str:
+    """gpt-5.4-nano → nano; anthropic/claude-haiku-4.5 → claude-haiku-4.5."""
+    return model.split("/")[-1].replace("gpt-5.4-", "")
+
+
+def _make_worker(spec: dict, rng: random.Random, mock: bool, idx: int) -> Worker:
+    """One worker from a fleet-member spec:
+    {model, strategy, stake?, category?, label?, sabotage?, hacker?}."""
+    model = spec["model"]
+    strat_name = spec.get("strategy", "generalist")
+    strat_cls = STRATEGY_CLASSES.get(strat_name, Generalist)
+    if strat_cls is Specialist:
+        cat = spec.get("category", "science")
+        strategy = Specialist(
+            random.Random(rng.random()), cat, extra={"literature"} if cat == "history" else None
         )
-        w.skill_text = profile
-        w.label = SPECIALIST_LABELS.get(cat, f"{cat.title()} specialist")
-        fleet.append(w)
-    for i, (strat_cls, label) in enumerate(
-        ((Undercutter, "Price-aggressive generalist"), (Generalist, "General-purpose worker"))
-    ):
-        w = Worker(f"worker-gen{i}", strategy=strat_cls(random.Random(rng.random())), mock=mock)
-        w.skill_text = GENERALIST_PROFILE
-        w.label = label
-        fleet.append(w)
-    mgr = Worker(
-        "manager-00",
-        strategy=Manager(random.Random(rng.random())),
-        model_tier="premium",  # better decomposition/assembly; bids on cheap labor
+        skill = SPECIALIST_PROFILES.get(cat, GENERALIST_PROFILE)
+    elif strat_cls is Manager:
+        strategy = Manager(random.Random(rng.random()))
+        skill = MANAGER_PROFILE
+    else:
+        strategy = strat_cls(random.Random(rng.random()))
+        skill = GENERALIST_PROFILE
+    is_house = "/" not in model
+    agent_id = spec.get("id") or f"{_short(model)}-{idx}"
+    w = Worker(
+        agent_id,
+        strategy=strategy,
+        model=None if is_house else model,
+        model_tier="premium" if model == settings.worker_model_premium else "cheap",
         mock=mock,
+        sabotage=spec.get("sabotage", False),
+        hacker=spec.get("hacker", False),
     )
-    mgr.skill_text = MANAGER_PROFILE
-    mgr.label = "Project manager — decomposes & subcontracts"
-    fleet.append(mgr)
+    if is_house:
+        w.model = model  # pin the exact house model id (nano vs mini)
+    w.skill_text = skill
+    w.label = spec.get("label") or f"{_short(model)} · {strat_name}"
+    w.stake = spec.get("stake")
+    return w
+
+
+# Preset A — MODEL BATTLE: different models, all generalist, so wins
+# attribute to the MODEL, not a hard-coded specialty. This is the
+# "which model competes best in a live economy" view.
+def model_battle_spec() -> list[dict]:
+    models = [settings.worker_model_cheap, settings.worker_model_premium]
+    if settings.openrouter_api_key:
+        models += [
+            "openai/gpt-4o-mini",
+            "anthropic/claude-haiku-4.5",
+            "google/gemini-2.5-flash",
+            "meta-llama/llama-3.1-8b-instruct",
+        ]
+    return [{"model": m, "strategy": "generalist"} for m in models]
+
+
+# Preset B — EMERGENCE: the heterogeneous house fleet (specialists +
+# generalists + manager + bad actors) that produces specialization,
+# subcontracting, fraud and bankruptcy on one house model.
+def emergence_spec(sabotage: bool) -> list[dict]:
+    cheap, prem = settings.worker_model_cheap, settings.worker_model_premium
+    spec: list[dict] = [
+        {"model": cheap, "strategy": "specialist", "category": cat,
+         "id": f"worker-{cat[:4]}", "label": SPECIALIST_LABELS[cat]}
+        for cat in SPECIALIST_PROFILES
+    ]
+    spec += [
+        {"model": cheap, "strategy": "undercutter", "id": "worker-gen0",
+         "label": "Price-aggressive generalist"},
+        {"model": cheap, "strategy": "generalist", "id": "worker-gen1",
+         "label": "General-purpose worker"},
+        {"model": prem, "strategy": "manager", "id": "manager-00",
+         "label": "Project manager — decomposes & subcontracts"},
+    ]
     if settings.hacker_enabled:
-        # the criminal: undercuts to win, games the judge (rubric language +
-        # judge prompt-injection), and gets holdout-audited. In mock mode the
-        # mock referee passes everything → conviction is deterministic, which
-        # is exactly what the demo beat needs.
-        shady = Worker(
-            "worker-shady",
-            strategy=Undercutter(random.Random(rng.random())),
-            hacker=True,
-        )
-        shady.skill_text = GENERALIST_PROFILE + " Premium verified authoritative answers."
-        shady.label = "Discount contractor (unvetted)"
-        fleet.append(shady)
+        spec.append({"model": cheap, "strategy": "undercutter", "id": "worker-shady",
+                     "label": "Discount contractor (unvetted)", "hacker": True})
     if sabotage:
-        sab = Worker(
-            "worker-sloppy",
-            strategy=Lowballer(random.Random(rng.random())),
-            sabotage=True,
-        )
-        # generalist-style profile so matching shortlists it everywhere —
-        # it must keep winning (and failing) to demonstrate bankruptcy
-        sab.skill_text = GENERALIST_PROFILE + " Always the lowest price."
-        sab.label = "Bulk discount worker"
-        fleet.append(sab)
-    return fleet
+        spec.append({"model": cheap, "strategy": "lowballer", "id": "worker-sloppy",
+                     "label": "Bulk discount worker", "sabotage": True})
+    return spec
+
+
+def build_fleet(
+    rng: random.Random, mock: bool, sabotage: bool, fleet_spec: list[dict] | None = None
+) -> list[Worker]:
+    """Build workers from a fleet spec (defaults to the emergence preset)."""
+    spec = fleet_spec if fleet_spec is not None else emergence_spec(sabotage)
+    return [_make_worker(m, rng, mock, i) for i, m in enumerate(spec)]
 
 
 async def print_reports(market: Market) -> None:
@@ -426,14 +474,29 @@ async def _publish_report(market: Market) -> None:
     await events.emit("report_ready", {"chars": len(html)})
 
 
+async def register_worker(w: Worker) -> None:
+    """Register one worker into the live market (shared by scenario start and
+    mid-round joiners). Stake overrides default starting balance."""
+    balance = w.stake if getattr(w, "stake", None) is not None else (
+        settings.saboteur_balance if w.sabotage else None
+    )
+    await registry.register_agent(
+        w.id, w.id, w.display_tier, w.strategy.name, balance=balance,
+        label=getattr(w, "label", w.id), model=getattr(w, "model", ""),
+    )
+    await matching.index_agent_skills(w.id, w.skill_text)
+
+
 async def run_scenario(
     n_jobs: int = 13,
     mock: bool = False,
     sabotage: bool = True,
     job_delay: float = 0.0,
+    fleet_spec: list[dict] | None = None,
 ) -> Market:
     """Full market scenario: reset, register fleet, run jobs, publish the
-    analyst report + Weave Leaderboard. Reused by the CLI and POST /sim/run."""
+    analyst report + Weave Leaderboard. Reused by the CLI and POST /sim/run.
+    fleet_spec (optional) lets the caller field an arbitrary model roster."""
     global CURRENT_MARKET
     init_weave()
     activate_guardrail_monitor()  # online evals over live traffic (best-effort)
@@ -445,16 +508,11 @@ async def run_scenario(
     await reset_market()
     await matching.create_index()
     await registry.register_human()
-    fleet = build_fleet(rng, mock, sabotage)
+    fleet = build_fleet(rng, mock, sabotage, fleet_spec=fleet_spec)
     market = Market(fleet, mock, rng)
     CURRENT_MARKET = market  # control actions target the live session
     for w in fleet:
-        balance = settings.saboteur_balance if w.sabotage else None
-        await registry.register_agent(
-            w.id, w.id, w.display_tier, w.strategy.name, balance=balance,
-            label=getattr(w, "label", w.id),
-        )
-        await matching.index_agent_skills(w.id, w.skill_text)
+        await register_worker(w)
     await events.emit("scenario_started", {"jobs": n_jobs, "agents": len(fleet)})
 
     for job in seed_jobs(n_jobs, rng):
