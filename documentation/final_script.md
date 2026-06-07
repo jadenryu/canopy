@@ -58,13 +58,14 @@ about their balance sheets."**
 
 ## 1:00–1:25 — THE REFEREE *(point at a settled card, then a rejected one)*
 
-**"Payment only moves when the Weave referee scores the work against ground
-truth — the score IS the settlement and the reputation. Bad work is rejected
-before a cent moves."** *Point: "rejected before payment" card.*
+**"Payment only moves when a Weave Scorer grades the work against ground
+truth — the score IS the settlement and the reputation. A second Scorer runs
+as a guardrail: bad work is rejected before a cent moves."** *Point:
+"rejected before payment" card.*
 
 **"And we evaluate the evaluator: a hidden holdout check audits the LLM
 judge. Score high with the judge but fail the holdout? That's fraud —
-reputation slashed, payment clawed back."**
+reputation slashed, payment clawed back. Weave polices Weave."**
 
 ## 1:25–2:00 — THE SHOCK *(the money shot — do not rush the pause)*
 
@@ -77,6 +78,13 @@ the feed, surge in the price cards.*
 total outage. Watch the market: prices surge about sixty percent,
 substitutes step up, and it re-clears on its own — back to baseline. No
 replanning. No code."**
+
+*While prices recover, flip to **Deals & reports** for ~5 seconds:*
+**"And while it heals — this report was drawn by an agent, arbitrary HTML in
+a sandboxed iframe; that job panel is a streamed UI spec; the dashboards are
+fixed widgets. Controlled, declarative, open-ended — CopilotKit's full
+gen-UI spectrum on one AG-UI connection, the same one that human-gated the
+kill."** *Back to the floor.*
 
 ## 2:00–2:30 — THE PROOF *(sidebar → Evaluations)*
 
@@ -96,12 +104,67 @@ point at the form if not.)*
 
 ## 2:45–3:00 — CLOSE *(back to the floor, let it run behind you)*
 
-**"Redis is the exchange — order book, ledger, matching engine, zero
-caching. Weave is the referee, the credit bureau, and the auditor. All three
-CopilotKit gen-UI patterns on one AG-UI connection. Canopy: the allocation
-layer for agent fleets — self-routing, self-scaling, self-healing."**
+**"Redis Cloud is the exchange — the order book is a Sorted Set, the ledger
+is a Stream, matching is RedisVL vector search, zero caching. Weave is the
+referee, the credit bureau, and the auditor. CopilotKit's three gen-UI
+patterns on one AG-UI connection. Canopy: the allocation layer for agent
+fleets — self-routing, self-scaling, self-healing."**
 
 ---
+
+## Winning the sponsor tracks (Weave / Redis / CopilotKit)
+
+Three mechanisms, in order of leverage:
+
+**1. Attribution timing (already wired into the beats above).** Sponsor
+judges remember "their tech did something," not "their logo was listed."
+The script now names each sponsor at the moment their tech acts on screen:
+Weave when work is rejected pre-payment (1:00), CopilotKit when the gen-UI
+spectrum flashes mid-heal (1:40), Redis Cloud by primitive in the close.
+Don't add more mentions — one load-bearing moment each beats five name-drops.
+
+**2. The 30-second riffs — deploy ONLY when that sponsor's judge is in the
+room** (check the judge map / table signs before your room assignment; ask
+the room marshal who's judging if unsure). Deliver during Q&A, or stretch
+the relevant beat if you're under time. Memorize all three:
+
+- **Weave riff** *(their stated criteria: evaluation, new features, unique
+  orchestration)*: "Weave runs six load-bearing surfaces here, none
+  decorative: thread-per-job tracing — job is a thread, every bid a turn;
+  the referee Scorer that IS the settlement; a guardrail Scorer rejecting
+  work pre-payment; the reputation ranking published as a native Weave
+  Leaderboard; the formal weave.Evaluation you saw — allocators as the
+  treatment variable; and the judge audit — Weave evaluating Weave's own
+  judge, with false-pass rates on the Evaluations page. The orchestration
+  it's refereeing is planner-free: a market, not a pipeline."
+- **Redis riff** *(their criteria: unique non-cache uses, a specific Redis
+  product)*: *open the Integrations page — live counters.* "This is a hosted
+  Redis Cloud database and there is no cache in this system. Four primitives,
+  each load-bearing: Sorted Sets are the order book and every per-job bid
+  book — winner selection is a ZRANGE; Streams are the append-only ledger
+  and the event bus this entire UI is projected from; Pub/Sub fans every
+  market event to the wire; and RedisVL vector search is the matching
+  engine — which agents even see a job. Redis isn't storing the exchange.
+  Redis IS the exchange."
+- **CopilotKit riff** *(their criteria: the AG-UI spectrum — controlled,
+  semi-open, open)*: *on Deals & reports.* "The backend speaks raw AG-UI —
+  STATE_SNAPSHOT plus JSON-Patch deltas per market event. One connection,
+  the full generative-UI spectrum: controlled — these fixed widgets the
+  market feeds; declarative — this job panel is a structured UI spec the
+  backend streams and a generic renderer walks; open-ended — this report is
+  agent-authored HTML in a sandboxed iframe. Plus human-in-the-loop: the
+  kill-switch suspends in shared state until a human approves. Spectrum and
+  safety, same wire."
+
+**3. The paper trail (sponsor committees read this, not the room demo).**
+- Devpost "How we built it" already enumerates per-sponsor usage — keep the
+  tool list explicit and per-criteria (it's written to their stated
+  preferences; don't genericize it).
+- The **Integrations page is the leave-behind**: it shows live Redis
+  counters, the Weave surface list, and the AG-UI wire status *inside the
+  product*. End any sponsor conversation by opening it: "we built the
+  sponsor pitch into the app."
+- Weave project link must be in the submission (required to win that track).
 
 ## Timing checkpoints & cut rules
 
@@ -114,6 +177,9 @@ layer for agent fleets — self-routing, self-scaling, self-healing."**
 
 **Never cut:** the metacognition line, the no-planner line, the shock, the
 eval numbers, the closing roll call. Those five ARE the submission.
+**Sponsor exception:** if a CopilotKit judge is in the room, the mid-heal
+gen-UI spectrum flash is also never-cut; if a Redis judge is, the close's
+primitive-by-primitive sentence is.
 
 ## Contingency ladder
 
