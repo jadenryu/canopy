@@ -88,7 +88,11 @@ class Worker(Agent):
             output = f"[mock execution by {self.id}]\nFINAL ANSWER: (mock)"
         else:
             prompt = job.spec
-            if settings.lessons_enabled:
+            if settings.semantic_memory:
+                from canopy.agents.memory import memory_block, recall
+
+                prompt = memory_block(await recall(self.id, job.spec)) + prompt
+            elif settings.lessons_enabled:
                 from canopy.agents.lessons import get_lessons, prompt_block
 
                 prompt = prompt_block(await get_lessons(self.id)) + prompt

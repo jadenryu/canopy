@@ -18,20 +18,33 @@ async def run_auction(job_id: str) -> Bid | None:
 
 @weave.op
 async def award(job: Job, winning_bid: Bid) -> Job:
-    """Winner selected → escrow the bid price, close the order-book entry."""
+    """Winner selected → escrow the cleared price, close the order-book entry.
+
+    Reverse first-price (default): winner is paid its own bid.
+    Vickrey second-price (settings.vickrey): the lowest bidder still wins but
+    is paid the RUNNER-UP's price — which makes truthful bidding the dominant
+    strategy (a textbook mechanism-design property). Falls back to first-price
+    when there is no second bid."""
+    cleared = winning_bid.price
+    if settings.vickrey:
+        runner_up = await order_book.second_price(job.id)
+        if runner_up is not None:
+            cleared = runner_up
     job.status = JobStatus.AWARDED
     job.winner_id = winning_bid.agent_id
-    job.escrow_amount = winning_bid.price
+    job.escrow_amount = cleared
     await order_book.save_job(job)
     await order_book.remove_open(job.id)
-    await escrow.hold(job.id, job.client_id, winning_bid.price)
+    await escrow.hold(job.id, job.client_id, cleared)
     await events.emit(
         "awarded",
         {
             "job_id": job.id,
             "winner_id": winning_bid.agent_id,
-            "price": round(winning_bid.price, 4),
+            "price": round(cleared, 4),
+            "bid": round(winning_bid.price, 4),
             "effective_bid": round(winning_bid.effective_bid, 4),
+            "vickrey": settings.vickrey,
         },
     )
     return job

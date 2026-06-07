@@ -221,6 +221,10 @@ class Market:
                 job.spec, result.score or 0.0, rationale, self.mock or winner.mock
             )
             await lessons.store_lesson(winner.id, job.id, result.score or 0.0, lesson)
+            if settings.semantic_memory:
+                from canopy.agents.memory import remember
+
+                await remember(winner.id, job.id, job.spec, lesson, result.score or 0.0)
 
     async def _publish_job_detail(self, job: Job, bids, winning_bid) -> None:
         """Declarative gen-UI source: a structured bid-comparison spec the

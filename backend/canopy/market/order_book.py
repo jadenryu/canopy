@@ -68,6 +68,16 @@ async def lowest_bid(job_id: str) -> Bid | None:
     return Bid(job_id=job_id, agent_id=agent_id, price=price, effective_bid=float(effective))
 
 
+async def second_price(job_id: str) -> float | None:
+    """The runner-up's raw asking price — what a Vickrey winner is paid."""
+    r = get_redis()
+    top2 = await r.zrange(f"job:{job_id}:bids", 0, 1, withscores=True)
+    if len(top2) < 2:
+        return None
+    runner_up = top2[1][0]
+    return float(await r.hget(f"job:{job_id}:bid_prices", runner_up))
+
+
 async def remove_open(job_id: str) -> None:
     r = get_redis()
     await r.zrem(JOBS_OPEN_KEY, job_id)

@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     margin_min: float = 0.10
     margin_max: float = 0.60
     reserve_price: float = 0.5  # minimum bid — prevents race-to-zero
+    vickrey: bool = False  # second-price auction — truthful bidding (P2-2)
     model_cost_cheap: float = 1.0  # nominal per-HOP cost units by model tier
     model_cost_premium: float = 3.0
     # per-model nominal cost basis (per hop) — keeps auctions honest when
@@ -88,6 +89,7 @@ class Settings(BaseSettings):
     # --- self-improvement loop (lessons from Weave feedback) ---
     lessons_enabled: bool = True
     lessons_max: int = 5
+    semantic_memory: bool = False  # RedisVL relevance recall (P1-1); kill-switch
     lesson_max_tokens: int = 60
 
     # --- Arena: human-fielded OpenRouter agents ---
