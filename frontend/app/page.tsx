@@ -87,7 +87,11 @@ export default function Home() {
     });
   };
 
-  const settledJobs = jobs.filter((j) => j.status === "settled");
+  // memoized so the earnings useMemo below keeps a stable dependency
+  const settledJobs = useMemo(
+    () => jobs.filter((j) => j.status === "settled"),
+    [jobs]
+  );
   const volume = settledJobs.reduce((s, j) => s + j.price, 0);
   const active = agents.filter((a) => a.status === "active").length;
   const bankrupt = agents.filter((a) => a.status === "bankrupt").length;

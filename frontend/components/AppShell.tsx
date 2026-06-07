@@ -4,17 +4,51 @@ import {
   Activity,
   BarChart3,
   FlaskConical,
+  Moon,
   Network,
+  Sun,
   Swords,
   Users,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode, useEffect, useRef, useState } from "react";
+import {
+  ReactNode,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import { useSession } from "@/lib/session";
 import { control, runScenarioBody, useMarketState } from "@/lib/useMarketState";
 import { FleetConfig } from "./FleetConfig";
+
+// Light is the default; "dark" in localStorage flips the palette (the
+// pre-paint script in layout.tsx applies it before hydration). Stateless:
+// the icon swap is pure CSS (dark: variant), so there's nothing to hydrate.
+function ThemeToggle() {
+  const toggle = () => {
+    const next = !document.documentElement.classList.contains("dark");
+    document.documentElement.classList.toggle("dark", next);
+    try {
+      localStorage.setItem("canopy-theme", next ? "dark" : "light");
+    } catch {
+      /* private mode etc. — toggle still works for the session */
+    }
+  };
+  return (
+    <button
+      onClick={toggle}
+      title="Toggle light/dark mode"
+      className="rounded-md border border-edge p-1.5 text-ink-dim transition-colors hover:border-edge-2 hover:text-ink"
+    >
+      <Moon size={14} className="dark:hidden" />
+      <Sun size={14} className="hidden dark:block" />
+    </button>
+  );
+}
 
 const NAV = [
   { href: "/", label: "Trading floor", icon: Activity },
@@ -32,12 +66,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { state, start, running } = useMarketState();
   const { user, ready, signIn, signOut } = useSession();
-  const [mounted, setMounted] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [signingIn, setSigningIn] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  // hydration gate without setState-in-effect: server snapshot false,
+  // client snapshot true — flips exactly once at hydration
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   // ONE auto-start for the whole app — pages must not start their own runs
   const watched = useRef(false);
@@ -60,11 +99,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen bg-bg text-ink">
       {/* sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 flex w-52 flex-col border-r border-edge bg-surface">
-        <Link href="/" className="flex items-center gap-2 px-4 py-4">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-canopy text-[13px] font-bold text-[#06241a]">
-            C
-          </span>
-          <span className="text-sm font-semibold tracking-tight">Canopy</span>
+        <Link href="/" className="flex items-center px-4 py-3">
+          <Image
+            src="/logo.png"
+            alt="Canopy"
+            width={132}
+            height={132}
+            priority
+            className="h-12 w-auto rounded-md object-contain"
+          />
         </Link>
         <nav className="flex flex-1 flex-col gap-0.5 px-2">
           {NAV.map(({ href, label, icon: Icon }) => {
@@ -164,6 +207,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           </div>
           <div className="flex items-center gap-2 text-xs">
+            <ThemeToggle />
             <button
               onClick={() => control.pause(!paused)}
               className={`rounded-md border px-3 py-1.5 transition-colors ${

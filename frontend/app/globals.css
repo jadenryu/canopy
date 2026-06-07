@@ -1,33 +1,104 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Canopy design tokens — enterprise dark.
+/* class-based dark mode: .dark on <html> switches the palette */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Canopy design tokens — enterprise neutral, light default + dark toggle.
    Neutral slate surfaces, one disciplined accent, semantic color reserved
-   for status indicators only. Sans-serif UI; monospace for data values. */
-@theme {
-  /* base surfaces — neutral, no hue cast */
-  --color-bg: #0b0d10;
-  --color-surface: #101317;
-  --color-surface-2: #161a20;
-  --color-edge: #20252d;
-  --color-edge-2: #2e3540;
+   for status indicators only. Inter for UI; JetBrains Mono for data values.
+   Palette values live on :root/.dark as plain vars; @theme inline maps them
+   to Tailwind utilities so they switch at runtime. */
+
+:root {
+  /* base surfaces — light */
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef0f3;
+  --edge: #e2e5ea;
+  --edge-2: #c9cfd8;
 
   /* text ladder */
-  --color-ink: #e7eaee;
-  --color-ink-dim: #9aa3ae;
-  --color-ink-faint: #5f6772;
+  --ink: #1c2127;
+  --ink-dim: #59626d;
+  --ink-faint: #8b939e;
+
+  /* semantic status — darkened for contrast on white */
+  --positive: #1c8a5d;
+  --negative: #c0492f;
+  --working: #95701a;
+  --info: #3672ab;
+  --verify: #6a5fc0;
+  --special: #9355a8;
+
+  /* brand accent */
+  --canopy: #0ea371;
+}
+
+.dark {
+  /* base surfaces — neutral, no hue cast */
+  --bg: #0b0d10;
+  --surface: #101317;
+  --surface-2: #161a20;
+  --edge: #20252d;
+  --edge-2: #2e3540;
+
+  /* text ladder */
+  --ink: #e7eaee;
+  --ink-dim: #9aa3ae;
+  --ink-faint: #5f6772;
 
   /* semantic status — desaturated, used for dots/labels, never floods */
-  --color-positive: #34b27d;
-  --color-negative: #e06c5a;
-  --color-working: #d2a23f;
-  --color-info: #5d9dd5;
-  --color-verify: #8f86d8;
-  --color-special: #b078c9;
+  --positive: #34b27d;
+  --negative: #e06c5a;
+  --working: #d2a23f;
+  --info: #5d9dd5;
+  --verify: #8f86d8;
+  --special: #b078c9;
 
   /* brand accent — the only saturated color on the page */
-  --color-canopy: #10b981;
+  --canopy: #10b981;
+}
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-edge: var(--edge);
+  --color-edge-2: var(--edge-2);
+
+  --color-ink: var(--ink);
+  --color-ink-dim: var(--ink-dim);
+  --color-ink-faint: var(--ink-faint);
+
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-working: var(--working);
+  --color-info: var(--info);
+  --color-verify: var(--verify);
+  --color-special: var(--special);
+
+  --color-canopy: var(--canopy);
+
+  /* shadcn semantic tokens → canopy palette */
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--ink-dim);
+  --color-border: var(--edge);
+  --color-input: var(--edge);
+  --color-ring: var(--canopy);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--canopy);
+  --color-primary-foreground: #06241a;
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--ink);
+  --color-accent: var(--surface-2);
+  --color-accent-foreground: var(--ink);
+}
+
+@theme {
   --font-mono: var(--font-jetbrains-mono);
   --font-sans: var(--font-geist-sans);
 
@@ -38,7 +109,7 @@
 
   @keyframes flash-row {
     from {
-      background-color: rgb(52 178 125 / 0.08);
+      background-color: rgb(52 178 125 / 0.12);
     }
     to {
       background-color: transparent;
@@ -75,31 +146,21 @@
   }
 }
 
-/* shadcn semantic tokens → canopy palette */
-@theme inline {
-  --color-background: var(--color-bg);
-  --color-foreground: var(--color-ink);
-  --color-muted: var(--color-surface-2);
-  --color-muted-foreground: var(--color-ink-dim);
-  --color-border: var(--color-edge);
-  --color-input: var(--color-edge);
-  --color-ring: var(--color-canopy);
-  --color-popover: var(--color-surface);
-  --color-popover-foreground: var(--color-ink);
-  --color-primary: var(--color-canopy);
-  --color-primary-foreground: #06241a;
-  --color-secondary: var(--color-surface-2);
-  --color-secondary-foreground: var(--color-ink);
-  --color-accent: var(--color-surface-2);
-  --color-accent-foreground: var(--color-ink);
-}
-
 body {
-  background: var(--color-bg);
-  color: var(--color-ink);
+  background: var(--bg);
+  color: var(--ink);
   font-family: var(--font-sans);
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
+  /* Inter refinements: contextual alternates + open digits */
+  font-feature-settings: "calt" 1, "cv11" 1;
+}
+
+/* refined heading rhythm — Inter wants slightly tighter tracking above 16px */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
 }
 
 /* data values: monospace + lining figures, applied per-element */
@@ -112,14 +173,14 @@ body {
 /* thin scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-edge) transparent;
+  scrollbar-color: var(--edge) transparent;
 }
 *::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--color-edge);
+  background: var(--edge);
   border-radius: 3px;
 }
 *::-webkit-scrollbar-track {

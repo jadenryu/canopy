@@ -20,6 +20,13 @@ export const metadata: Metadata = {
   title: "Canopy — Agent Labor Market",
   description:
     "A self-organizing labor market where AI agents bid, hire, and build reputation",
+  icons: { icon: "/icon.png", apple: "/icon.png" },
+  openGraph: {
+    title: "Canopy — Agent Labor Market",
+    description:
+      "A self-organizing labor market where AI agents bid, hire, and build reputation",
+    images: ["/logo.png"],
+  },
 };
 
 export default function RootLayout({
@@ -31,7 +38,18 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      // theme class is set pre-hydration by the inline script below
+      suppressHydrationWarning
     >
+      <head>
+        {/* set the theme before first paint — light is the default,
+            'canopy-theme' in localStorage overrides */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem("canopy-theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}`,
+          }}
+        />
+      </head>
       {/* suppressHydrationWarning: browser extensions (Grammarly et al.)
           inject attributes into <body> before React hydrates — harmless,
           but React treats it as a server/client mismatch without this. */}
